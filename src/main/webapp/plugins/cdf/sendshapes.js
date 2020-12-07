@@ -1,25 +1,10 @@
-// TODO: Ask the folks at drawio whether plugin loading really needs to be synchronous
 Draw.loadPlugin(async function(ui) {
 
-  const loadScript = (path, onload) => {
-    return new Promise((resolve, reject) => {
-      const tag = document.createElement('script');
-      tag.onload = resolve;
-      tag.src = path;
-      document.head.appendChild(tag);
-    })
-  }
-
-  await loadScript("/websockets/common.js");
-  await loadScript("/websockets/client.js");
+  const p = loadScript("plugins/cdf/messaging.js");
 
   const graph = ui.editor.graph;
 
-  ui.toolbar.addSeparator();
-  const statusDiv = document.createElement('div');
-  const status = document.createTextNode("Disconnected");
-  statusDiv.appendChild(status);
-  ui.toolbar.container.appendChild(statusDiv)
+  console.log(ui)
 
   let peers;
   let you;
@@ -57,18 +42,10 @@ Draw.loadPlugin(async function(ui) {
     }
   }
 
-
-  let websocketOrigin;
-  if (document.location.protocol === "https:") {
-    websocketOrigin = "wss://" + document.location.origin.substring(8);
-  } else {
-    websocketOrigin = "ws://" + document.location.origin.substring(7);
-  }
-
-  const client = new Client(websocketOrigin + "/websocket");
+  await p;
+  client = await getMessagingClient(ui);
 
   client.on('disconnected', () => {
-    status.textContent = "Disconnected";
     graph.popupMenuHandler.factoryMethod = oldFactoryMethod;
   })
 
@@ -76,8 +53,6 @@ Draw.loadPlugin(async function(ui) {
     if (what === "peers") {
       you = data.you;
       peers = data.peers.filter(p => p !== you);
-
-      status.textContent = "Connected as Peer " + you;
       graph.popupMenuHandler.factoryMethod = newFactoryMethod;
     }
   });

@@ -17,6 +17,26 @@
     <meta name="mobile-web-app-capable" content="yes">
 	<meta name="theme-color" content="#d89000">
 	<script type="text/javascript">
+
+		// Asynchronously loading scripts.
+		// Every script loaded at most once (basically rolled our own NodeJS require())
+		var loadScript = (function() {
+			const requested = {};
+		  return (path, onload) => {
+		  	let promise = requested[path];
+		  	if (promise === undefined) {
+			    requested[path] = promise = new Promise((resolve, reject) => {
+			      const tag = document.createElement('script');
+			      tag.type = 'text/javascript';
+			      tag.onload = resolve;
+			      tag.src = path;
+			      document.head.appendChild(tag);
+			    });
+		  	}
+		  	return promise;
+		  }
+		})();
+
 		/**
 		 * URL Parameters and protocol description are here:
 		 *
