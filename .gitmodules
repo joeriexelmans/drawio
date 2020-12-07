@@ -1,0 +1,3 @@
+[submodule "websockets"]
+	path = websockets
+	url = git@github.com:joeriexelmans/websockets.git
