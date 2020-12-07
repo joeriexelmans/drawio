@@ -1,3 +1,6 @@
 [submodule "websockets"]
 	path = websockets
 	url = git@github.com:joeriexelmans/websockets.git
+[submodule "mxgraph"]
+	path = mxgraph
+	url = git@github.com:joeriexelmans/mxgraph.git

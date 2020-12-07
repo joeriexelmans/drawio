@@ -245,16 +245,14 @@
 		if (urlParams['dev'] == '1')
 		{
 			// Used to request grapheditor/mxgraph sources in dev mode
-			// var mxDevUrl = document.location.protocol + '//devhost.jgraph.com/mxgraph2';
-			var mxDevUrl = document.location.origin + document.location.pathname + '/../../../../../mxgraph2';
+			var mxDevUrl = document.location.origin + '/mxgraph';
 			
-			// Used to request draw.io sources in dev mode
-			// var drawDevUrl = document.location.protocol + '//devhost.jgraph.com/drawio/src/main/webapp/';
+			// Used to request draw.io sources in dev mode:  /src/main/webapp/
 			var drawDevUrl = document.location.origin + document.location.pathname;
 			
 			if (document.location.protocol == 'file:')
 			{
-				mxDevUrl = '../../../../../mxgraph2';
+				mxDevUrl = '/mxgraph';
 				drawDevUrl = './';
 				
 				// Forces includes for dev environment in node.js

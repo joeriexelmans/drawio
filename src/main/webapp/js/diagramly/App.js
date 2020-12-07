@@ -614,29 +614,29 @@ App.main = function(callback, createUi)
 		{
 			var scripts = document.getElementsByTagName('script');
 			
-			// Checks bootstrap script
-			if (scripts != null && scripts.length > 0)
-			{
-				var content = mxUtils.getTextContent(scripts[0]);
+			// // Checks bootstrap script
+			// if (scripts != null && scripts.length > 0)
+			// {
+			// 	var content = mxUtils.getTextContent(scripts[0]);
 				
-				if (CryptoJS.MD5(content).toString() != 'a74b51371929aa44cfc6f8b9c73d1f47')
-				{
-					console.log('Change bootstrap script MD5 in the previous line:', CryptoJS.MD5(content).toString());
-					alert('[Dev] Bootstrap script change requires update of CSP');
-				}
-			}
+			// 	if (CryptoJS.MD5(content).toString() != 'a74b51371929aa44cfc6f8b9c73d1f47')
+			// 	{
+			// 		console.log('Change bootstrap script MD5 in the previous line:', CryptoJS.MD5(content).toString());
+			// 		alert('[Dev] Bootstrap script change requires update of CSP');
+			// 	}
+			// }
 			
-			// Checks main script
-			if (scripts != null && scripts.length > 1)
-			{
-				var content = mxUtils.getTextContent(scripts[1]);
+			// // Checks main script
+			// if (scripts != null && scripts.length > 1)
+			// {
+			// 	var content = mxUtils.getTextContent(scripts[1]);
 				
-				if (CryptoJS.MD5(content).toString() != 'd41d8cd98f00b204e9800998ecf8427e')
-				{
-					console.log('Change main script MD5 in the previous line:', CryptoJS.MD5(content).toString());
-					alert('[Dev] Main script change requires update of CSP');
-				}
-			}
+			// 	if (CryptoJS.MD5(content).toString() != 'd41d8cd98f00b204e9800998ecf8427e')
+			// 	{
+			// 		console.log('Change main script MD5 in the previous line:', CryptoJS.MD5(content).toString());
+			// 		alert('[Dev] Main script change requires update of CSP');
+			// 	}
+			// }
 		}
 
 		// Runs as progressive web app if service workers are supported
