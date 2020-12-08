@@ -1,16 +1,13 @@
 async function getMessagingClient(ui)
 {
+  // Load scripts in the right order
   const p = Promise.all([
-    loadScript("/websockets/common.js"),
-    loadScript("/websockets/client.js"),
-  ]);
+      loadScript("/websockets/common.js"),
+      loadScript("/websockets/uuidv4.min.js"),
+    ]).then(() => loadScript("/websockets/client.js"));
 
+  // Display Connected/Disconnected status on toolbar
   ui.toolbar.addSeparator();
-
-
-
-  // button.appendChild(status)
-
   const statusDiv = document.createElement('div');
   statusDiv.classList.add("geLabel");
   statusDiv.style = "white-space: nowrap; position: relative;";
@@ -27,7 +24,8 @@ async function getMessagingClient(ui)
 
   await p;
 
-  const client = new Client(websocketOrigin + "/websocket");
+  const ourId = uuidv4();
+  const client = new Client(websocketOrigin + "/websocket", ourId);
 
   client.on('disconnected', () => {
     status.textContent = "Disconnected";
@@ -35,7 +33,7 @@ async function getMessagingClient(ui)
 
   client.on('receivePush', (what, data) => {
     if (what === "peers") {
-      status.textContent = "Connected as Peer " + data.you;
+      status.textContent = "Connected as Peer " + shortUUID(data.you);
     }
   });
 

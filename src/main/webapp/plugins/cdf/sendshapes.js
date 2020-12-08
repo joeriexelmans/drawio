@@ -6,8 +6,7 @@ Draw.loadPlugin(async function(ui) {
 
   console.log(ui)
 
-  let peers;
-  let you;
+  let peers = [];
 
   const oldFactoryMethod = graph.popupMenuHandler.factoryMethod;
 
@@ -23,10 +22,10 @@ Draw.loadPlugin(async function(ui) {
       const encoded = codec.encode(selectedCells);
 
       const submenu = menu.addItem("Send to", null);
-      menu.addItem("You are peer " + you, null, null, submenu, null, false);
+      menu.addItem("You are peer " + shortUUID(you), null, null, submenu, null, false);
       if (peers.length > 0) {
         peers.forEach(peer => {
-          menu.addItem("Peer " + peer, null, function() {
+          menu.addItem("Peer " + shortUUID(peer), null, function() {
             const serializedShapes = new XMLSerializer().serializeToString(encoded);
             p2p.send(peer, "shapes", serializedShapes, (err, data) => {
               if (err) {
