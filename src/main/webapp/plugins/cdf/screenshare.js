@@ -3,7 +3,7 @@ Draw.loadPlugin(async function(ui) {
   window.ui = ui; // global variable for debugging
   const graph = ui.editor.graph;
 
-  // all peers
+  // all known peers
   let peers = [];
 
   // peers screensharing with
@@ -39,30 +39,26 @@ Draw.loadPlugin(async function(ui) {
   const shareEvent = serializer => {
     // return new event listener for mxEventSource:
     return (source, eventObj) => {
-      Object.keys(sharingWith).forEach(peer => {
-        p2p.send(peer, "push_edit", {
-          event: eventObj.name,
-          props: serializer(eventObj.properties),
-        }, (err, data) => {
-          if (err) {}
-          else {}
-        });
-      })
+      const props = serializer(eventObj.properties);
+      if (props !== undefined) {
+        Object.keys(sharingWith).forEach(peer => {
+          p2p.send(peer, "push_edit", {
+            event: eventObj.name,
+            props,
+          }, (err, data) => {
+            if (err) {}
+            else {}
+          });
+        })
+      }
     };
   };
 
-  // // CELLS_ADDED(cells: Array[mxCell], parent: mxCell, index: int, absolute: bool)
-  // //   -> what's index, absolute?
-  // graph.addListener(mxEvent.CELLS_ADDED, shareEvent(({cells, parent, index, absolute}) => {
-  //   return {
-  //     cells: encodeCells(cells),
-  //     parentId: parent.id,
-  //     index,
-  //     absolute,
-  //   }
-  // }))
-
+  // We do not use these events because they are fired in the middle of an edit transaction (instead of at the end)
+  // wrong: CELLS_ADDED(cells: Array[mxCell], parent: mxCell, index: int, absolute: bool)
   // wrong: CELLS_MOVED(cells: Array[mxCell], dx, dy)
+  // wrong: CELLS_REMOVED(cells: Array[mxCell])
+
   // right: MOVE_CELLS(cells: Array{mxCell], clone: bool, dx, dy, target: mxCell, event: PointerEvent})
   graph.addListener(mxEvent.MOVE_CELLS, shareEvent(({cells, target, clone, dx, dy}) => {
     const data = {
@@ -70,6 +66,7 @@ Draw.loadPlugin(async function(ui) {
       clone, dx, dy,
     }
     if (clone) {
+      // this is also true when a new cell was added
       return {
         ...data,
         cellsXml: encodeCells(cells),
@@ -82,7 +79,37 @@ Draw.loadPlugin(async function(ui) {
     }
   }))
 
-  // CELLS_REMOVED(cells: Array[mxCell])
+  graph.addListener(mxEvent.REMOVE_CELLS, shareEvent(({cells, includeEdges}) => {
+    if (cells.length > 0) {
+      // for some reason moving cells causes REMOVE_CELLS to be fired with 0 cells - do not share the event in this case :)
+      return {
+        cellIds: cells.map(cell => cell.id),
+        includeEdges,
+      }
+    }
+  }))
+
+  graph.addListener(mxEvent.RESIZE_CELLS, shareEvent(({cells, bounds, previous}) => {
+    return {
+      cellIds: cells.map(cell => cell.id),
+      boundsXml: encodeCells(bounds),
+    }
+  }))
+
+  // edge: mxCell
+  // source: boolean (whether source of edge (=directed) was connected, or target)
+  // terminal: mxCell to which connect happened (potentially undefined)
+  // previous: mxCell from which disconnect happened (potentially undefined)
+  graph.addListener(mxEvent.CONNECT_CELL, shareEvent(({edge, source, terminal, previous}) => {
+    return {
+      edgeId: edge.id,
+      edgeGeometryXml: encodeCells(edge.geometry),
+      source,
+      terminalId: terminal ? terminal.id : null,
+      previousId: previous ? previous.id : null,
+    }
+  }))
+
   // CELLS_RESIZED(cells: .., bounds: mxRectangle{x,y,width,height}, previous: Array[mxGeometry{x,y,width,height, ...}])
   // CELL_CONNECTED(edge, mxCell, source: bool, [terminal: mxCell,] [previous: mxCell])
   //   source: whether source of edge connected
@@ -97,35 +124,38 @@ Draw.loadPlugin(async function(ui) {
         // received edit from other peer
         graph.setEventsEnabled(false);
         ({
-          // [mxEvent.CELLS_ADDED]: ({cells, parentId, index, absolute}) => {
-          //   console.log("SCREENSHARE: CELLS_ADDED")
-          //   const cells = decodeCells(cells);
-          //   graph.importCells(cells,
-          //     0, 0, // dx, dy
-          //     graph.model.cells[parentId]); // parent
-          // },
           [mxEvent.MOVE_CELLS]: ({cellsXml, cellIds, targetId, clone, dx, dy}) => {
             const target = targetId !== null ? graph.model.cells[targetId] : undefined;
             if (clone) {
               const cells = decodeCells(cellsXml);
-              console.log("IMPORT CELLS", cells, "TARGET", target);
-              const result = graph.moveCells(cells, 0, 0, false, target);
-              console.log("IMPORTED:", result)
+              const result = graph.moveCells(cells,
+                0, 0, // dx, dy - the cells themselves already contain the correct offset. using dx and dy would position them at twice their position-vector
+                false, // clone - not necessary because decodeCells already created the cells, we want to simply "move" them to the target. if true, the cells would be given new ids
+                target);
             } else {
               const cells = cellIds.map(id => graph.model.cells[id]);
-              console.log("MOVE CELLS", cells, "TARGET", target);
               graph.moveCells(cells, dx, dy, clone, target);
             }
           },
-          // [mxEvent.CELLS_REMOVED]: props => {
-
-          // },
-          // [mxEvent.CELLS_RESIZED]: props => {
-
-          // },
-          // [mxEvent.CELL_CONNECTED]: props => {
-
-          // },
+          [mxEvent.REMOVE_CELLS]: ({cellIds, includeEdges}) => {
+            const cells = cellIds.map(id => graph.model.cells[id]);
+            graph.removeCells(cells, includeEdges);
+          },
+          [mxEvent.RESIZE_CELLS]: ({cellIds, boundsXml}) => {
+            const cells = cellIds.map(id => graph.model.cells[id]);
+            const bounds = decodeCells(boundsXml);
+            graph.resizeCells(cells, bounds,
+              false); // recurse
+          },
+          [mxEvent.CONNECT_CELL]: ({edgeId, edgeGeometryXml, source, terminalId, previousId}) => {
+            const edge = graph.model.cells[edgeId];
+            const geometry = decodeCells(edgeGeometryXml);
+            const terminal = terminalId !== null ? graph.model.cells[terminalId] : undefined;
+            const previous = previousId !== null ? graph.model.cells[previousId] : undefined;
+            edge.setGeometry(geometry);
+            graph.connectCell(edge, terminal, source,
+              null); // "constraint". the docs say: optional <mxConnectionConstraint>. are we missing something here?
+          },
         }[event])(props);
         graph.setEventsEnabled(true);
         reply(); // acknowledge
