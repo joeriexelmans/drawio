@@ -1,48 +1,13 @@
 Draw.loadPlugin(async function(ui) {
 
+  window.ui = ui; // global variable for debugging
   const graph = ui.editor.graph;
 
   // all peers
   let peers = [];
 
   // peers screensharing with
-  let sharingWith = [];
-
-  window.ui = ui;
-
-  // Add toolbar buttons
-  ui.toolbar.addSeparator();
-
-  ui.menus.put('screenshare', new Menu(function(menu, parent) {
-    console.log(menu)
-    if (peers.length > 0) {
-      peers.forEach(peer => {
-        menu.addItem("Peer " + shortUUID(peer), null, function() {
-          const graphXml = ui.editor.getGraphXml();
-          const graphSerialized = new XMLSerializer().serializeToString(graphXml);
-          p2p.send(peer, "init_screenshare", graphSerialized, (err, data) => {
-            if (err) {
-              alert(err)
-            }
-            else {
-              sharingWith.push(peer);
-            }
-          });
-        }, menu);
-      })      
-    } else {
-      menu.addItem("No peers ", null, null, menu, null, false);
-    }
-  }))
-
-  const screenshareMenu = ui.toolbar.addMenu('', "Share screen with another user", true, 'screenshare');
-
-  screenshareMenu.style.width = '100px';
-  screenshareMenu.showDisabled = true;
-  screenshareMenu.style.whiteSpace = 'nowrap';
-  screenshareMenu.style.position = 'relative';
-  screenshareMenu.style.overflow = 'hidden';
-  screenshareMenu.innerHTML = "Screen Share" + ui.toolbar.dropdownImageHtml;
+  let sharingWith = {};
 
   const p = loadScript("plugins/cdf/messaging.js");
   await p;
@@ -59,40 +24,22 @@ Draw.loadPlugin(async function(ui) {
     peers = []
   })
 
-  const decodeGraph = xmlString => {
-    const parsedXml = new DOMParser().parseFromString(data, "text/xml").firstElementChild;
+  const decodeCells = xmlString => {
+    const parsedXml = new DOMParser().parseFromString(xmlString, "text/xml").firstElementChild;
     const codec = new mxCodec();
     return codec.decode(parsedXml);
   };
 
-  const encodeGraph = cells => {
+  const encodeCells = cells => {
       const codec = new mxCodec();
-      const encoded = codec.encode(selectedCells);
+      const encoded = codec.encode(cells);
       return new XMLSerializer().serializeToString(encoded);
   };
 
-
-  // Events we should listen for:
-  //
-  // CELLS_ADDED(cells: Array[mxCell], parent: mxCell, index: int, absolute: bool)
-  //   -> what's index, absolute?
-  //
-  // CELLS_MOVED(cells: Array[mxCell], dx, dy)
-  //
-  // CELLS_REMOVED(cells: Array[mxCell])
-  //
-  // CELLS_RESIZED(cells: .., bounds: mxRectangle{x,y,width,height}, previous: Array[mxGeometry{x,y,width,height, ...}])
-  //
-  // CELL_CONNECTED(edge, mxCell, source: bool, [terminal: mxCell,] [previous: mxCell])
-  //   source: whether source of edge connected
-  //   terminal: cell connected to
-  //   previous: cell disconnected from
-
-
-  const sendEvent = serializer => {
+  const shareEvent = serializer => {
     // return new event listener for mxEventSource:
     return (source, eventObj) => {
-      sharingWith.forEach(peer => {
+      Object.keys(sharingWith).forEach(peer => {
         p2p.send(peer, "push_edit", {
           event: eventObj.name,
           props: serializer(eventObj.properties),
@@ -104,52 +51,83 @@ Draw.loadPlugin(async function(ui) {
     };
   };
 
-  graph.addListener(mxEvent.CELLS_ADDED, sendEvent(props => {
-    return {
-      cells: encodeGraph(props.cells),
-      parentId: props.parent.id,
-      // also: index: int, absolute: bool ?
+  // // CELLS_ADDED(cells: Array[mxCell], parent: mxCell, index: int, absolute: bool)
+  // //   -> what's index, absolute?
+  // graph.addListener(mxEvent.CELLS_ADDED, shareEvent(({cells, parent, index, absolute}) => {
+  //   return {
+  //     cells: encodeCells(cells),
+  //     parentId: parent.id,
+  //     index,
+  //     absolute,
+  //   }
+  // }))
+
+  // wrong: CELLS_MOVED(cells: Array[mxCell], dx, dy)
+  // right: MOVE_CELLS(cells: Array{mxCell], clone: bool, dx, dy, target: mxCell, event: PointerEvent})
+  graph.addListener(mxEvent.MOVE_CELLS, shareEvent(({cells, target, clone, dx, dy}) => {
+    const data = {
+      targetId: target ? target.id : null,
+      clone, dx, dy,
+    }
+    if (clone) {
+      return {
+        ...data,
+        cellsXml: encodeCells(cells),
+      }
+    } else {
+      return {
+        ...data,
+        cellIds: cells.map(cell => cell.id),
+      }
     }
   }))
 
-  graph.addListener(mxEvent.CELLS_MOVED, sendEvent(props => {
-    return {
-      cellIds: props.cells.map(cell => cell.id),
-      disconnect: props.disconnect, // bool
-      dx: props.dx,
-      dy: props.dy,
-    }
-  }))
+  // CELLS_REMOVED(cells: Array[mxCell])
+  // CELLS_RESIZED(cells: .., bounds: mxRectangle{x,y,width,height}, previous: Array[mxGeometry{x,y,width,height, ...}])
+  // CELL_CONNECTED(edge, mxCell, source: bool, [terminal: mxCell,] [previous: mxCell])
+  //   source: whether source of edge connected
+  //   terminal: cell connected to
+  //   previous: cell disconnected from
 
-  const pushEditHandlers = {};
-  pushEditHandlers[mxEvent.CELLS_ADDED] = props => {
-    const cells = decodeGraph(props.cells);
-    graph.importCells(cells,
-      0, 0, // dx, dy
-      graph.cells[props.parentId]); // parent
-  }
-  pushEditHandlers[mxEvent.CELLS_MOVED] = props => {
-    const cells = data.props.cellIds.map(id => graph.model.cells[id]);
-    graph.moveCells(cells,
-      data.props.dx, data.props.dy,
-      false, // clone
-      null); // target (new parent)
-  }
-  pushEditHandlers[mxEvent.CELLS_REMOVED] = props => {
-  }
-  pushEditHandlers[mxEvent.CELLS_RESIZED] = props => {
-  }
-  pushEditHandlers[mxEvent.CELL_CONNECTED] = props => {
-  }
-
+  // Handler for incoming requests from other peers
   const p2p = new PeerToPeer(client, {
     // incoming request from another peer
-    "push_edit": (from, data, reply) => {
-      if (sharingWith.hasOwnProperty(from)) {
-        // an edit operation happened at other peer
-        console.log("received shapes from peer", from);
-        console.log("data:", data);
-        pushEditHandlers[data.event](data.props);
+    "push_edit": (from, {event, props}, reply) => {
+      if (sharingWith[from]) {
+        // received edit from other peer
+        graph.setEventsEnabled(false);
+        ({
+          // [mxEvent.CELLS_ADDED]: ({cells, parentId, index, absolute}) => {
+          //   console.log("SCREENSHARE: CELLS_ADDED")
+          //   const cells = decodeCells(cells);
+          //   graph.importCells(cells,
+          //     0, 0, // dx, dy
+          //     graph.model.cells[parentId]); // parent
+          // },
+          [mxEvent.MOVE_CELLS]: ({cellsXml, cellIds, targetId, clone, dx, dy}) => {
+            const target = targetId !== null ? graph.model.cells[targetId] : undefined;
+            if (clone) {
+              const cells = decodeCells(cellsXml);
+              console.log("IMPORT CELLS", cells, "TARGET", target);
+              const result = graph.moveCells(cells, 0, 0, false, target);
+              console.log("IMPORTED:", result)
+            } else {
+              const cells = cellIds.map(id => graph.model.cells[id]);
+              console.log("MOVE CELLS", cells, "TARGET", target);
+              graph.moveCells(cells, dx, dy, clone, target);
+            }
+          },
+          // [mxEvent.CELLS_REMOVED]: props => {
+
+          // },
+          // [mxEvent.CELLS_RESIZED]: props => {
+
+          // },
+          // [mxEvent.CELL_CONNECTED]: props => {
+
+          // },
+        }[event])(props);
+        graph.setEventsEnabled(true);
         reply(); // acknowledge
       }
     },
@@ -157,7 +135,7 @@ Draw.loadPlugin(async function(ui) {
       const yesClicked = () => {
         const graphParsed = mxUtils.parseXml(graphSerialized).documentElement;
         ui.editor.setGraphXml(graphParsed);
-        sharingWith.push(from);
+        sharingWith[from] = true;
         reply(); // acknowledge
         ui.hideDialog()
       }
@@ -178,11 +156,45 @@ Draw.loadPlugin(async function(ui) {
       buttons.style.marginTop = '30px';
       popupDiv.appendChild(buttons);
       popupDiv.style.textAlign = 'center';
-      ui.showDialog(popupDiv, 250, 110,
+      ui.showDialog(popupDiv,
+        250, 110, // w, h
         false, // modal
         false); // closable
     },
   });
 
-  client.connect()
+  const initShare = peer => {
+    const graphXml = ui.editor.getGraphXml();
+    const graphSerialized = new XMLSerializer().serializeToString(graphXml);
+    p2p.send(peer, "init_screenshare", graphSerialized, (err, data) => {
+      if (err) {
+        alert(err)
+      }
+      else {
+        sharingWith[peer] = true;
+      }
+    });
+  }
+
+  client.connect();
+
+
+  // UI stuff
+  ui.toolbar.addSeparator();
+  ui.menus.put('screenshare', new Menu(function(menu, parent) {
+    if (peers.length > 0) {
+      peers.forEach(peer => {
+        menu.addItem("Peer " + shortUUID(peer), null, () => initShare(peer), menu);
+      });
+    } else {
+      menu.addItem("No peers ", null, null, menu, null, false);
+    }
+  }))
+  const screenshareMenu = ui.toolbar.addMenu('', "Share screen with another user", true, 'screenshare');
+  screenshareMenu.style.width = '100px';
+  screenshareMenu.showDisabled = true;
+  screenshareMenu.style.whiteSpace = 'nowrap';
+  screenshareMenu.style.position = 'relative';
+  screenshareMenu.style.overflow = 'hidden';
+  screenshareMenu.innerHTML = "Screen Share" + ui.toolbar.dropdownImageHtml;
 });
