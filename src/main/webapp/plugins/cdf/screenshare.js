@@ -25,7 +25,7 @@ Draw.loadPlugin(async function(ui) {
   ui.menus.put('screenshare', new Menu(function(menu, parent) {
     if (peers.peers.length > 0) {
       peers.peers.forEach(peer => {
-        menu.addItem("Peer " + shortUUID(peer), null, () => screenShare.initshare(peer), menu);
+        menu.addItem("Peer " + shortUUID(peer), screenShare.sharingWith.hasOwnProperty(peer) ? Editor.checkmarkImage : null, () => screenShare.initshare(peer), menu);
       });
     } else {
       menu.addItem("No peers ", null, null, menu, null, false);
