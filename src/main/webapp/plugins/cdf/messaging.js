@@ -2,9 +2,9 @@ async function getMessagingClient(ui)
 {
   // Load scripts in the right order
   const p = Promise.all([
-      loadScript("/websockets/common.js"),
-      loadScript("/websockets/uuidv4.min.js"),
-    ]).then(() => loadScript("/websockets/client.js"));
+      loadScript("../../../websockets/common.js"),
+      loadScript("../../../websockets/uuidv4.min.js"),
+    ]).then(() => loadScript("../../../websockets/client.js"));
 
   // Display Connected/Disconnected status on toolbar
   ui.toolbar.addSeparator();
