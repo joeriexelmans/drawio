@@ -6,7 +6,7 @@ Draw.loadPlugin(function(ui) {
     // .map(([key,val]) => {console.log("  mxEvent."+key); return [key,val];})
 
   events.forEach(([key,val]) => {
-    ui.editor.graph.addListener(val, (source, eventObj) => {
+    ui.editor.graph.model.addListener(val, (source, eventObj) => {
       console.log("mxEvent." + key, eventObj);
     })
   })

@@ -5,7 +5,7 @@ Draw.loadPlugin(async function(ui) {
 
   await Promise.all([
     loadScript("plugins/cdf/messaging.js"),
-    loadScript("../../../lib/screenshare.js"),
+    loadScript("../../../lib/screenshare2.js"),
     loadScript("../../../lib/peers.js"),
     loadScript("../../../lib/uitools.js"),
   ]);
