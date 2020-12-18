@@ -6,7 +6,6 @@ Draw.loadPlugin(async function(ui) {
   await Promise.all([
     loadScript("plugins/cdf/messaging.js"),
     loadScript("../../../lib/screenshare2.js"),
-    loadScript("../../../lib/peers.js"),
     loadScript("../../../lib/uitools.js"),
   ]);
 
@@ -16,16 +15,17 @@ Draw.loadPlugin(async function(ui) {
 
   const uiTools = new UiTools(ui);
 
-  const screenShare = new ScreenShare(client, graph, uiTools.yesNo.bind(uiTools), ui.showAlert.bind(ui));
+  const screenShare = new ScreenShare(client, peers, graph, uiTools.yesNo.bind(uiTools), ui.showAlert.bind(ui));
 
   client.connect();
 
   // UI stuff
   ui.toolbar.addSeparator();
   ui.menus.put('screenshare', new Menu(function(menu, parent) {
-    if (peers.peers.length > 0) {
-      peers.peers.forEach(peer => {
-        menu.addItem("Peer " + shortUUID(peer), screenShare.sharingWith.hasOwnProperty(peer) ? Editor.checkmarkImage : null, () => screenShare.initshare(peer), menu);
+    const peerList = peers.getPeers();
+    if (peerList.length > 0) {
+      peerList.forEach(peer => {
+        menu.addItem("Peer " + shortUUID(peer), screenShare.sharingWith === peer  ? Editor.checkmarkImage : null, () => screenShare.initshare(peer), menu);
       });
     } else {
       menu.addItem("No peers ", null, null, menu, null, false);

@@ -33,7 +33,7 @@ async function getMessagingClient(ui)
 
   client.on('receivePush', (what, data) => {
     if (what === "peers") {
-      status.textContent = "Connected as Peer " + shortUUID(data.you);
+      status.textContent = "Connected as Peer " + shortUUID(client.uuid);
     }
   });
 
