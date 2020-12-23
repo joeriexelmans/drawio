@@ -15,7 +15,7 @@ Draw.loadPlugin(async function(ui) {
 
   const uiTools = new UiTools(ui);
 
-  const screenShare = new ScreenShare(client, peers, graph, uiTools.yesNo.bind(uiTools), ui.showAlert.bind(ui));
+  const screenShare = new ScreenShare(client, peers, graph, ui.editor.undoManager, uiTools.yesNo.bind(uiTools), ui.showAlert.bind(ui));
 
   client.connect();
 
