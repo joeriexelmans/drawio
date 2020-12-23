@@ -323,11 +323,12 @@ App.pluginRegistry = {
 	// 'page': '/plugins/page.js', 'gd': '/plugins/googledrive.js',
 	// 'tags': '/plugins/tags.js',
 
-	// CDF stuff goes here (for now, only demos and such)
-	'logevents': '/plugins/cdf/logevents.js',
-	'ftgpm': '/plugins/cdf/ftgpm.js',
-	'sendshapes': '/plugins/cdf/sendshapes.js',
-	'screenshare': '/plugins/cdf/screenshare.js',
+
+	'logevents': 'plugins/cdf/logevents.js',
+	'ftgpm': 'plugins/cdf/ftgpm.js',
+	'ftgpm-edit': 'plugins/cdf/ftgpm-edit.js',
+	'sendshapes': 'plugins/cdf/sendshapes.js',
+	'screenshare': 'plugins/cdf/screenshare.js',
 };
 
 App.publicPlugin = [
