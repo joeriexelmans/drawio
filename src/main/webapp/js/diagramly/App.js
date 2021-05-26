@@ -329,6 +329,7 @@ App.pluginRegistry = {
 	'ftgpm-edit': 'plugins/cdf/ftgpm-edit.js',
 	'sendshapes': 'plugins/cdf/sendshapes.js',
 	'screenshare': 'plugins/cdf/screenshare.js',
+	'svg-viewport': 'plugins/cdf/svg-viewport.js',
 };
 
 App.publicPlugin = [
