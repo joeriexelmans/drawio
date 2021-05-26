@@ -42,13 +42,10 @@ Draw.loadPlugin(async function(ui) {
     paintVertexShape(canvas, x, y, w, h) {
       super.paintVertexShape(canvas, x, y, w, h);
 
-      console.log("paintVertexShape", "x:", x, "y:", y, "w:", w, "h:", h);
-      this.svg.setAttribute("x", x);
-      this.svg.setAttribute("y", y);
-      this.svg.setAttribute("y", y);
+      // console.log("paintVertexShape", "x:", x, "y:", y, "w:", w, "h:", h);
       this.svg.setAttribute("width", w);
       this.svg.setAttribute("height", h);
-      this.g.setAttribute("transform", `rotate(${canvas.state.rotation},${x+w/2},${y+h/2})`);
+      this.g.setAttribute("transform", `scale(${canvas.state.scale},${canvas.state.scale}) rotate(${canvas.state.rotation},${x+w/2},${y+h/2}) translate(${x + canvas.state.dx}, ${y + canvas.state.dy})`);
       canvas.root.appendChild(this.g);
     }
   };
