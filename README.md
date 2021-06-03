@@ -1,3 +1,15 @@
+About this fork
+---------------
+
+Most of the original repo has been left intact. This fork mostly appends files (plugins, etc.)
+Files from original repo that were altered and therefore may give merge conflicts when pulling from the original repo are the following:
+ * index.html: Changed paths of mxGraph repository to point to the mxGraph git submodule of this repo. Tested with webapp, with and without dev=1 URL param.
+ * App.js: Added our own plugins to the plugin list
+
+
+Original README.md follows:
+
+
 [![Build Status](https://travis-ci.com/jgraph/drawio.svg?branch=master)](https://travis-ci.com/jgraph/drawio)
 
 About
@@ -46,3 +58,4 @@ We are grateful for community involvement, bug reports, & feature requests. We d
 not wish to come off as anything but welcoming, however, we've
 made the decision to keep this project closed to contributions for 
 the long term viability of the project.
+
