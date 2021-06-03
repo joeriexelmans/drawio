@@ -32,7 +32,7 @@
     targetType = targetCell.getAttribute("pmRole");
 
     function isActivity(type) {
-      return type === "man_activity" || type === "autom_activity";
+      return type === "man_activity" || type === "autom_activity" || type === "super_activity";
     }
     function isTransformation(type) {
       return type === "man_transformation" || type === "auto_transformation";
@@ -53,10 +53,10 @@
         setStyle("typed_by")
         return;
       }
-      else if (targetType === "super_activity") {
-        setStyle("detail")
-        return;
-      }
+      // else if (targetType === "super_activity") {
+      //   setStyle("detail")
+      //   return;
+      // }
       else if (targetType === "artifact") {
         // console.log("PM data-flow (produce) link")
         setStyle("data_flow")
