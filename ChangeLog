@@ -1,3 +1,394 @@
+02-JUN-2021: 14.7.4
+
+- Sets fonts color for note shape in sketch theme
+- Consistent freehand defaults for all themes
+- Escape stops freehand drawing
+- Fixes timeout error when UI fonts are overwritten in PDF export
+- Fixes overridden indent keystroke, uses alt+tab for tab
+- Fixes tab to stop editing
+
+29-MAY-2021: 14.7.3
+
+- Updates layer dot after model changes
+- Adds 4 spaces for shift+tab while editing labels
+- Adds shift+tab to insert tab
+- Fixes for sketch and dark theme
+- Adds support for additional OrgChart type in Lucidchart import
+- Adds dot to layer for selected cells [2027]
+- Fixes issues with live preview [2257]
+- Fixes rounding errors in segment connector [2257]
+- Updates ja translations
+
+26-MAY-2021: 14.7.2
+
+- [conf cloud] Enables sketch macro
+
+25-MAY-2021: 14.7.1
+
+- Fixes edges with zero height/width src/trg cell in vsdx import
+
+20-MAY-2021: 14.7.0
+
+- Updates RoughJS to 4.4.1 with preserveVertices option
+- Sets template backgrounds to transparent, except where it is set to an explicit non-white color
+- Adds support for Lucidchart OrgBlock
+- [conf cloud] Adds support for attached images in label (in page Ids import)
+- Fixes NPE in Lucidchart import
+- Fixes default user picture
+- [conf cloud] Removes draft check error of zero byte files
+- Updates Mermaid to 8.10.1
+- Updates es translations
+
+13-MAY-2021: 14.6.13
+
+- Updates to latest Azure stencils
+- [conf cloud] Improves error handling around draft load failing
+- [conf cloud] Fixes lib import without config space
+
+11-MAY-2021: 14.6.12
+
+- Fixes sidebar preview for sketch theme
+- Disables handwritten fonts in sketch theme with rough=0
+- Fixes inconsistent pointer event handling
+- Fixes ignored comic style for rectangle shape
+- Adds modifier keys for wheel scrolling in sketch theme
+- Disables page view after page format change with sketch theme
+- Updates ar and ru translations
+
+07-MAY-2021: 14.6.11
+
+- Fixes Dropbox client in dev mode
+- Adds iconsearch CF worker
+- Updates Gliffy translations for BPMN 2.0
+- Removes JSON2 usage. Required for IE7- which doesn't work since VML support removed.
+- Reverts parameters for sidebar so default style is not applied.
+- Adds gitflow examples
+- Additional Spanish translations
+
+04-MAY-2021: 14.6.10
+
+- Adds zoomFactor config option
+- Fixes links on custom shapes in Lucid import
+- Adds ctrl/cmd+dblclick to change cell ID
+- Adds containers to general sidebar
+- Fixes pointer events for text shapes
+- Fixes selected style in dark mode
+- Moves Dropbox auth from implicit grant to server-side flow
+- Adds XML option to import menu in minimal and sketch theme
+- Adds Shift+Click on clear waypoints button to clear fixed anchor points
+- Fixes overridden default font in sidebar thumbnails
+- Fixes ignored default styles for shapes dialog and inserted templates
+- Fixes NPE for sketch UI in embed mode
+- Adds enabledChanged event to graph
+- Separates clear waypoints and clear anchor points
+- Disables file API in Opera
+- Fixes anchor points behavior for Choreography shapes in BPMN
+
+29-APR-2021: 14.6.9
+
+- Corrects GitHub app ID
+
+29-APR-2021: 14.6.8
+
+- Refactors GitHub paths
+
+28-APR-2021: 14.6.7
+
+- Switches to server flow for GitHub and Gitlab auth
+
+22-APR-2021: 14.6.6
+
+- Adds dark mode for minimal theme
+
+21-APR-2021: 14.6.5
+
+- Versions shapes minified JS
+
+21-APR-2021: 14.6.4
+
+- Restores BPMN 2.0 shapes
+
+19-APR-2021: 14.6.3
+
+- Fixes for dark mode and sketch theme
+
+19-APR-2021: 14.6.2
+
+- Fixes private Gitlab instance URL parsing
+
+15-APR-2021: 14.6.1
+
+- Improvements to sketch theme
+
+13-APR-2021: 14.6.0
+
+- Updates to workbox 6.1.2
+
+09-APR-2021: 14.5.10
+
+- Internal release
+
+09-APR-2021: 14.5.9
+
+- Improvement to sketch theme
+
+06-APR-2021: 14.5.8
+
+- Fixes Confluence Cloud saving issue
+
+03-APR-2021: 14.5.7
+
+- Add various shapes
+
+02-APR-2021: 14.5.6
+
+- Removes BPMN 2 changes
+
+01-APR-2021: 14.5.5
+
+- Improves BPMN symbols to 2.0 spec
+
+31-MAR-2021: 14.5.4
+
+- Fixes for vsdx export
+- Adds re-tries on cache write failures
+
+26-MAR-2021: 14.5.3
+
+- Internal release
+
+26-MAR-2021: 14.5.2
+
+- Disables copy as image in iframes
+- Fixes find/replace dialog in minimal theme https://github.com/jgraph/drawio/issues/1896
+- Fixes ignored grid for polygon shapes https://github.com/jgraph/drawio/issues/1891
+
+23-MAR-2021: 14.5.1
+
+- Fixes for Electron 12
+
+22-MAR-2021: 14.5.0
+
+- Improves Lucidchart import
+
+17-MAR-2021: 14.4.9
+
+- Adds copy as image option
+- Makes find and replace dialog the default
+
+12-MAR-2021: 14.4.8
+
+- Fixes segment router removing control hints at specific zooms
+
+10-MAR-2021: 14.4.7
+
+- Adds upload option back in embed conf cloud
+
+09-MAR-2021: 14.4.6
+
+- Adds support for linkTarget property
+
+08-MAR-2021: 14.4.5
+
+- Changes find dialog to replace and find
+
+03-MAR-2021: 14.4.4
+
+- Improves Lucidchart import
+
+24-FEB-2021: 14.4.3
+
+- Adds notifications
+
+18-FEB-2021: 14.4.2
+
+- More fixes for aj.draw.io and ac.draw.io lightbox
+
+18-FEB-2021: 14.4.1
+
+- Fixes lightbox for aj.draw.io and ac.draw.io
+
+17-FEB-2021: 14.4.0
+
+- Removes VML support
+- Adds Persian language
+- Forces ac.draw.io and aj.draw.io to embed mode
+
+15-FEB-2021: 14.3.2
+
+- Adds flow animation style
+- Makes grid steps configurable
+- Adds ctrl+drop to insert dropped content as new page
+- Uses app.diagrams.net for editing [DID-1717]
+- Fixes drag and drop for SVG+XML files
+
+11-FEB-2021: 14.3.1
+
+- Adds support for regional direction to back-ends
+- Adds grid option to export dialog
+
+08-FEB-2021: 14.3.0
+
+- Fixes external fonts in PDF export
+- Fixes drag and drop for shapes with shadow
+- Renames page for import into blank diagram
+- Fixes export triggers autosave in embed mode
+
+29-JAN-2021: 14.2.9
+
+- Fixes NPE in minimal mode
+
+29-JAN-2021: 14.2.8
+
+- Adds data governance config
+
+22-JAN-2021: 14.2.7
+
+- Improves Lucidchart import
+
+20-JAN-2021: 14.2.6
+
+- Fixes for OneDrive client flow
+
+19-JAN-2021: 14.2.5
+
+- Add client-side clipping of SVG
+
+15-JAN-2021: 14.2.4
+
+- Improves Lucidchart import
+
+14-JAN-2021: 14.2.3
+
+- Fixes pako encoding issues
+
+13-JAN-2021: 14.2.2
+
+- Fixes decoding of compressed shape files
+
+13-JAN-2021: 14.2.1
+
+- Fixes UInt8Array call stack size exception
+
+13-JAN-2021: 14.2.0
+
+- Disables Trello by default
+- Updates pako to 2.0.3
+
+09-JAN-2021: 14.1.9
+
+- AWS stencil update
+
+02-JAN-2021: 14.1.8
+
+- Internal release
+
+01-JAN-2021: 14.1.7
+
+- Fixes NPE for single point edges
+
+31-DEC-2020: 14.1.6
+
+- Internal release for conf/jira cloud changes
+
+31-DEC-2020: 14.1.5
+
+- Desktop fixes for File API clash
+
+30-DEC-2020: 14.1.4
+
+- Fixes marker rounding errors
+
+28-DEC-2020: 14.1.3
+
+- Internal release
+
+23-DEC-2020: 14.1.2
+
+- Adds UML 2.5 library
+
+18-DEC-2020: 14.1.1
+
+- Fixes Math config
+
+18-DEC-2020: 14.1.0
+
+- Fixes multiple Math initialization
+
+17-DEC-2020: 14.0.5
+
+- Fixes ignored hidden toolbar [1627], settings icon
+- Uses combined configuration file for MathJax
+
+16-DEC-2020: 14.0.4
+
+- Fixes images paths
+
+15-DEC-2020: 14.0.3
+
+- Fixes NPE
+
+15-DEC-2020: 14.0.2
+
+- Improves Lucidchart import
+
+10-DEC-2020: 14.0.1
+
+- Uses minimal UI on iPad Mini and smaller
+- Adds clear.html for clearing caches
+
+09-DEC-2020: 14.0.0
+
+- Internal refactoring of source code
+
+07-DEC-2020: 13.11.0
+
+- Fixes for Confluence Cloud
+
+04-DEC-2020: 13.10.9
+
+- Hardens servlets
+
+03-DEC-2020: 13.10.8
+
+- Reverts UML 2.5 release
+
+03-DEC-2020: 13.10.7
+
+- Improves Lucidchart import
+
+02-DEC-2020: 13.10.6
+
+- Adds auto-crop, origin for visible layers [688]
+- Improves Lucidchart import
+
+01-DEC-2020: 13.10.5
+
+- Uses mxGraph 4.2.3 beta 6
+- Adds page size export option
+
+26-NOV-2020: 13.10.4
+
+- Adds compare button in revision history dialog
+
+25-NOV-2020: 13.10.3
+
+- Uses mxGraph 4.2.3 beta 5
+
+24-NOV-2020: 13.10.2
+
+- Fixes specific synchronize operations
+
+22-NOV-2020: 13.10.1
+
+- Adds File, Embed, Notion
+
+18-NOV-2020: 13.10.0
+
+- Internal release for Github actions testing
+- Conf Cloud: Viewer settings direct from the viewer
+- Conf Cloud: Adds custom libraries to more shapes dialog
+
 15-NOV-2020: 13.9.9
 
 - Improves Lucidchart import

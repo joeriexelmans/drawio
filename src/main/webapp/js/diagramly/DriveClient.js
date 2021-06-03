@@ -2,7 +2,15 @@
  * Copyright (c) 2006-2020, JGraph Ltd
  * Copyright (c) 2006-2020, draw.io AG
  */
-DriveClient = function(editorUi, isExtAuth)
+
+//Add a closure to hide the class private variables without changing the code a lot
+(function()
+{
+
+var _token = null;
+var pickers = {};
+
+window.DriveClient = function(editorUi, isExtAuth)
 {
 	if (isExtAuth == null && window.urlParams != null && window.urlParams['extAuth'] == '1')
 	{
@@ -49,16 +57,7 @@ DriveClient = function(editorUi, isExtAuth)
 	
 	if (authInfo != null && authInfo.current != null)
 	{
-		authInfo = authInfo.current;
-		
-		this.userId = authInfo.userId;
-		this.token = authInfo.access_token;
-		
-		var remainingTime = (authInfo.expires - Date.now()) / 1000;
-		
-		authInfo.expires_in = remainingTime < 600? 1 : remainingTime; //10 min tolerance window in case of any rounding errors
-		this.resetTokenRefresh(authInfo);
-
+		this.userId = authInfo.current.userId;
 		this.authCalled = false;
 	}
 };
@@ -252,9 +251,11 @@ DriveClient.prototype.getUsersList = function()
 
 DriveClient.prototype.logout = function()
 {
+	//Send to server to clear refresh token cookie
+	this.ui.editor.loadUrl(this.redirectUri + '?doLogout=1&userId=' + this.userId + '&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname));
 	this.clearPersistentToken();
 	this.setUser(null);
-	this.token = null;
+	_token = null;
 };
 
 /**
@@ -387,7 +388,7 @@ DriveClient.prototype.executeRequest = function(reqObj, success, error)
 						request.setRequestHeader('Content-Type', 'application/json');
 					}
 					
-					request.setRequestHeader('Authorization', 'Bearer ' + this.token);
+					request.setRequestHeader('Authorization', 'Bearer ' + _token);
 				});
 				
 				req.send(mxUtils.bind(this, function(req)
@@ -497,7 +498,7 @@ DriveClient.prototype.executeRequest = function(reqObj, success, error)
 		});
 		
 		// Must get token before first request in this case
-		if (this.token == null || !this.authCalled)
+		if (_token == null || !this.authCalled)
 		{
 			this.execute(fn);
 		}
@@ -570,7 +571,8 @@ DriveClient.prototype.authorize = function(immediate, success, error, remember, 
 
 DriveClient.prototype.updateAuthInfo = function (newAuthInfo, remember, forceUserUpdate, success, error)
 {
-	this.token = newAuthInfo.access_token;
+	_token = newAuthInfo.access_token;
+	delete newAuthInfo.access_token; //Don't store access token
 	newAuthInfo.expires = Date.now() + parseInt(newAuthInfo.expires_in) * 1000;
 	newAuthInfo.remember = remember;
 	
@@ -618,31 +620,18 @@ DriveClient.prototype.authorizeStep2 = function(state, immediate, success, error
 			}
 		}
 		
-		//Retry request with refreshed token
-		var authInfo = JSON.parse(this.getPersistentToken(true));
-		
-		if (authInfo != null)
+		if (this.userId == null)
 		{
-			if (this.userId == null)
+			var authInfo = JSON.parse(this.getPersistentToken(true));
+			
+			if (authInfo && authInfo.current != null)
 			{
-				if (authInfo.current != null)
-				{
-					this.userId = authInfo.current.userId;
-					authInfo = authInfo[this.userId];
-				}
-				else
-				{
-					authInfo = null;
-				}
-			}
-			else
-			{
-				authInfo = authInfo[this.userId]; //If user id is new, authInfo will be null
+				this.userId = authInfo.current.userId;
 			}
 		}
 		
-		// Immediate only possible with a refresh token
-		if (immediate && (authInfo == null || authInfo.refresh_token == null))
+		// Immediate only possible with a refresh token (there is a userId)
+		if (immediate && this.userId == null)
 		{
 			if (error != null)
 			{
@@ -651,19 +640,19 @@ DriveClient.prototype.authorizeStep2 = function(state, immediate, success, error
 		}
 		else
 		{
+			//Retry request with refreshed token (in the cookie)
 			if (immediate) //Note, we checked refresh token is not null above
 			{
 				//state is used to identify which app/domain is used
-				var req = new mxXmlRequest(this.redirectUri + '?state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname + '&ver=2&token=' + state)
-						+ '&refresh_token=' + authInfo.refresh_token, null, 'GET');
+				var req = new mxXmlRequest(this.redirectUri + '?state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname + '&token=' + state)
+						+ '&userId=' + this.userId
+						, null, 'GET');
 				
 				req.send(mxUtils.bind(this, function(req)
 				{
 					if (req.getStatus() >= 200 && req.getStatus() <= 299)
 					{
 						var newAuthInfo = JSON.parse(req.getText());
-						newAuthInfo.refresh_token = authInfo.refresh_token; //Refresh token is not returned in the new auth info
-						
 						this.updateAuthInfo(newAuthInfo, true, false, success, error); //We set remember to true since we can only have a refresh token if user initially selected remember
 					}
 					else 
@@ -688,7 +677,7 @@ DriveClient.prototype.authorizeStep2 = function(state, immediate, success, error
 						'&response_type=code&include_granted_scopes=true' +
 						(remember? '&access_type=offline&prompt=consent%20select_account' : '') + //Ask for consent again to get a new refresh token
 						'&scope=' + encodeURIComponent(this.scopes.join(' ')) +
-						'&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname + '&ver=2&token=' + state + //To identify which app/domain is used
+						'&state=' + encodeURIComponent('cId=' + this.clientId + '&domain=' + window.location.hostname + '&token=' + state + //To identify which app/domain is used
 						(this.sameWinRedirectUrl? '&redirect=' + this.sameWinRedirectUrl : '')); 
 				
 				if (this.sameWinAuthMode)
@@ -780,10 +769,10 @@ DriveClient.prototype.resetTokenRefresh = function(resp)
 		{
 			this.authorize(true, mxUtils.bind(this, function()
 			{
-				//console.log('tokenRefresh: refreshed', this.token);
+				//console.log('tokenRefresh: refreshed', _token);
 			}), mxUtils.bind(this, function()
 			{
-				//console.log('tokenRefresh: error refreshing', this.token);
+				//console.log('tokenRefresh: error refreshing', _token);
 			}));
 		}), resp.expires_in * 900);
 	}
@@ -824,7 +813,7 @@ DriveClient.prototype.updateUser = function(success, error)
 	try
 	{
 		var url = 'https://www.googleapis.com/oauth2/v2/userinfo?alt=json';
-		var headers = {'Authorization': 'Bearer ' + this.token};
+		var headers = {'Authorization': 'Bearer ' + _token};
 		
 		this.ui.editor.loadUrl(url, mxUtils.bind(this, function(data)
 		{
@@ -1018,7 +1007,7 @@ DriveClient.prototype.getFile = function(id, success, error, readXml, readLibrar
 						(!this.ui.useCanvasForExport && binary))
 					{
 						var url = resp.downloadUrl;
-						var headers = {'Authorization': 'Bearer ' + this.token};
+						var headers = {'Authorization': 'Bearer ' + _token};
 						
 						this.ui.convertFile(url, resp.title, resp.mimeType, this.extension, success, error, null, headers);
 					}
@@ -1073,7 +1062,7 @@ DriveClient.prototype.getXmlFile = function(resp, success, error, ignoreMime, re
 {
 	try
 	{
-		var headers = {'Authorization': 'Bearer ' + this.token};
+		var headers = {'Authorization': 'Bearer ' + _token};
 		var url = resp.downloadUrl;
 		
 		// Download URL is null if no option to download for viewers
@@ -1086,141 +1075,169 @@ DriveClient.prototype.getXmlFile = function(resp, success, error, ignoreMime, re
 		}
 		else
 		{
-			// Loads XML to initialize realtime document if realtime is empty
-			this.ui.editor.loadUrl(url, mxUtils.bind(this, function(data)
+			var retryCount = 0;
+
+			var fn = mxUtils.bind(this, function()
 			{
-				try
+				// Loads XML to initialize realtime document if realtime is empty
+				this.ui.editor.loadUrl(url, mxUtils.bind(this, function(data)
 				{
-					if (data == null)
+					try
 					{
-						// TODO: Optional redirect to legacy if link is for old file
-						error({message: mxResources.get('invalidOrMissingFile')});
-					}
-					else if (resp.mimeType == this.libraryMimeType || readLibrary)
-					{
-						if (resp.mimeType == this.libraryMimeType && !readLibrary)
+						if (data == null)
 						{
-							error({message: mxResources.get('notADiagramFile')});
+							// TODO: Optional redirect to legacy if link is for old file
+							error({message: mxResources.get('invalidOrMissingFile')});
+						}
+						else if (resp.mimeType == this.libraryMimeType || readLibrary)
+						{
+							if (resp.mimeType == this.libraryMimeType && !readLibrary)
+							{
+								error({message: mxResources.get('notADiagramFile')});
+							}
+							else
+							{
+								success(new DriveLibrary(this.ui, data, resp));
+							}
 						}
 						else
 						{
-							success(new DriveLibrary(this.ui, data, resp));
-						}
-					}
-					else
-					{
-						var importFile = false;
-						
-						if (/\.png$/i.test(resp.title))
-						{
-							var index = data.lastIndexOf(',');
+							var importFile = false;
 							
-							if (index > 0)
+							if (/\.png$/i.test(resp.title))
 							{
-								var xml = this.ui.extractGraphModelFromPng(data.substring(index + 1));
+								var index = data.lastIndexOf(',');
 								
-								if (xml != null && xml.length > 0)
+								if (index > 0)
 								{
-									data = xml;
-								}
-								else
-								{
-									// Checks if the file contains XML data which can happen when we insert
-									// the file and then don't post-process it when loaded into the UI which
-									// is required for creating the images for .PNG and .SVG files.
-									try
+									var xml = this.ui.extractGraphModelFromPng(data);
+									
+									if (xml != null && xml.length > 0)
 									{
-										var xml = data.substring(index + 1);
-										var temp = (window.atob && !mxClient.IS_IE && !mxClient.IS_IE11) ?
-											atob(xml) : Base64.decode(xml);
-										var node = this.ui.editor.extractGraphModel(
-											mxUtils.parseXml(temp).documentElement, true);
-										
-										if (node == null || node.getElementsByTagName('parsererror').length > 0)
+										data = xml;
+									}
+									else
+									{
+										// Checks if the file contains XML data which can happen when we insert
+										// the file and then don't post-process it when loaded into the UI which
+										// is required for creating the images for .PNG and .SVG files.
+										try
+										{
+											var xml = data.substring(index + 1);
+											var temp = (window.atob && !mxClient.IS_IE && !mxClient.IS_IE11) ?
+												atob(xml) : Base64.decode(xml);
+											var node = this.ui.editor.extractGraphModel(
+												mxUtils.parseXml(temp).documentElement, true);
+											
+											if (node == null || node.getElementsByTagName('parsererror').length > 0)
+											{
+												importFile = true;
+											}
+											else
+											{
+												data = temp;
+											}
+										}
+										catch (e)
 										{
 											importFile = true;
 										}
-										else
+									}
+								}
+							}
+							else if (/\.pdf$/i.test(resp.title))
+							{
+								var xml = Editor.extractGraphModelFromPdf(data);
+								
+								if (xml != null && xml.length > 0)
+								{
+									importFile = true;
+									data = xml;
+								}
+							}
+							// Checks for base64 encoded mxfile
+							else if (data.substring(0, 32) == 'data:image/png;base64,PG14ZmlsZS')
+							{
+								var temp = data.substring(22);
+								data = (window.atob && !mxClient.IS_SF) ? atob(temp) : Base64.decode(temp);
+							}
+							
+							if (Graph.fileSupport && new XMLHttpRequest().upload && this.ui.isRemoteFileFormat(data, url))
+							{
+								this.ui.parseFile(new Blob([data], {type: 'application/octet-stream'}), mxUtils.bind(this, function(xhr)
+								{
+									try
+									{
+										if (xhr.readyState == 4)
 										{
-											data = temp;
+											if (xhr.status >= 200 && xhr.status <= 299)
+											{
+												success(new LocalFile(this.ui, xhr.responseText, resp.title + this.extension, true));
+											}
+											else if (error != null)
+											{
+												error({message: mxResources.get('errorLoadingFile')});
+											}
 										}
 									}
 									catch (e)
 									{
-										importFile = true;
-									}
-								}
-							}
-						}
-						else if (/\.pdf$/i.test(resp.title))
-						{
-							var xml = Editor.extractGraphModelFromPdf(data);
-							
-							if (xml != null && xml.length > 0)
-							{
-								importFile = true;
-								data = xml;
-							}
-						}
-						// Checks for base64 encoded mxfile
-						else if (data.substring(0, 32) == 'data:image/png;base64,PG14ZmlsZS')
-						{
-							var temp = data.substring(22);
-							data = (window.atob && !mxClient.IS_SF) ? atob(temp) : Base64.decode(temp);
-						}
-						
-						if (Graph.fileSupport && new XMLHttpRequest().upload && this.ui.isRemoteFileFormat(data, url))
-						{
-							this.ui.parseFile(new Blob([data], {type: 'application/octet-stream'}), mxUtils.bind(this, function(xhr)
-							{
-								try
-								{
-									if (xhr.readyState == 4)
-									{
-										if (xhr.status >= 200 && xhr.status <= 299)
+										if (error != null)
 										{
-											success(new LocalFile(this.ui, xhr.responseText, resp.title + this.extension, true));
+											error(e);
 										}
-										else if (error != null)
+										else
 										{
-											error({message: mxResources.get('errorLoadingFile')});
+											throw e;
 										}
 									}
-								}
-								catch (e)
-								{
-									if (error != null)
-									{
-										error(e);
-									}
-									else
-									{
-										throw e;
-									}
-								}
-							}), resp.title);
+								}), resp.title);
+							}
+							else
+							{
+								success((importFile) ? new LocalFile(this.ui, data, resp.title, true) : new DriveFile(this.ui, data, resp));
+							}
+						}
+					}
+					catch (e)
+					{
+						if (error != null)
+						{
+							error(e);
 						}
 						else
 						{
-							success((importFile) ? new LocalFile(this.ui, data, resp.title, true) : new DriveFile(this.ui, data, resp));
+							throw e;
 						}
 					}
-				}
-				catch (e)
+				}), mxUtils.bind(this, function(e, req)
 				{
-					if (error != null)
+					if (retryCount < this.maxRetries && req != null && req.getStatus() == 403)
 					{
-						error(e);
+						retryCount++;
+						var jitter = 1 + 0.1 * (Math.random() - 0.5);
+						var delay = retryCount * 2 * this.coolOff * jitter;
+
+						window.setTimeout(fn, delay);
 					}
 					else
 					{
-						throw e;
+						if (error != null)
+						{
+							error(e);
+						}
+						else
+						{
+							throw e;
+						}
 					}
-				}
-			}), error, ((resp.mimeType != null && resp.mimeType.substring(0, 6) == 'image/' &&
-				resp.mimeType.substring(0, 9) != 'image/svg')) || /\.png$/i.test(resp.title) ||
-				/\.jpe?g$/i.test(resp.title) || /\.pdf$/i.test(resp.title),
-				null, null, null, headers);
+				}), ((resp.mimeType != null && resp.mimeType.substring(0, 6) == 'image/' &&
+					resp.mimeType.substring(0, 9) != 'image/svg')) || /\.png$/i.test(resp.title) ||
+					/\.jpe?g$/i.test(resp.title) || /\.pdf$/i.test(resp.title),
+					null, null, null, headers);
+			});
+
+			fn();
 		}
 	}
 	catch (e)
@@ -2018,6 +2035,46 @@ DriveClient.prototype.createUploadRequest = function(id, metadata, data, revisio
  * @param {number} dx X-coordinate of the translation.
  * @param {number} dy Y-coordinate of the translation.
  */
+DriveClient.prototype.createLinkPicker = function()
+{
+	var name = 'linkPicker';
+	var picker = pickers[name];
+	
+	if (picker == null || pickers[name + 'Token'] != _token)
+	{
+		pickers[name + 'Token'] = _token;
+
+		var view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+			.setParent('root')
+			.setIncludeFolders(true)
+			.setSelectFolderEnabled(true);
+		var view2 = new google.picker.DocsView()
+			.setIncludeFolders(true)
+			.setSelectFolderEnabled(true);
+		var view21 = new google.picker.DocsView()
+			.setIncludeFolders(true)
+			.setEnableDrives(true)
+			.setSelectFolderEnabled(true);
+		picker = new google.picker.PickerBuilder()
+			.setAppId(this.appId)	
+			.setLocale(mxLanguage)
+			.setOAuthToken(pickers[name + 'Token'])
+			.enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+			.addView(view)
+			.addView(view2)
+			.addView(view21)
+			.addView(google.picker.ViewId.RECENTLY_PICKED);
+	}
+	
+	return picker;
+};
+
+/**
+ * Translates this point by the given vector.
+ * 
+ * @param {number} dx X-coordinate of the translation.
+ * @param {number} dy Y-coordinate of the translation.
+ */
 DriveClient.prototype.pickFile = function(fn, acceptAllFiles, cancelFn)
 {
 	this.filePickerCallback = (fn != null) ? fn : mxUtils.bind(this, function(id)
@@ -2061,16 +2118,16 @@ DriveClient.prototype.pickFile = function(fn, acceptAllFiles, cancelFn)
 					}
 				});
 				
-				if (this[name] == null || this[name + 'Token'] != this.token)
+				if (pickers[name] == null || pickers[name + 'Token'] != _token)
 				{
 					// FIXME: Dispose not working
-	//				if (this[name] != null)
+	//				if (pickers[name] != null)
 	//				{
-	//					console.log(name, this[name]);
-	//					this[name].dispose();
+	//					console.log(name, pickers[name]);
+	//					pickers[name].dispose();
 	//				}
 					
-					this[name + 'Token'] = this.token;
+					pickers[name + 'Token'] = _token;
 	
 					// Pseudo-hierarchical directory view, see
 					// https://groups.google.com/forum/#!topic/google-picker-api/FSFcuJe7icQ
@@ -2101,8 +2158,8 @@ DriveClient.prototype.pickFile = function(fn, acceptAllFiles, cancelFn)
 						view3.setMimeTypes('*/*');
 					}
 					
-					this[name] = new google.picker.PickerBuilder()
-				        .setOAuthToken(this[name + 'Token'])
+					pickers[name] = new google.picker.PickerBuilder()
+				        .setOAuthToken(pickers[name + 'Token'])
 				        .setLocale(mxLanguage)
 				        .setAppId(this.appId)
 				        .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
@@ -2115,15 +2172,15 @@ DriveClient.prototype.pickFile = function(fn, acceptAllFiles, cancelFn)
 					if (urlParams['gPickerSize'])
 					{
 						var cSize = urlParams['gPickerSize'].split(',');
-						this[name] = this[name].setSize(cSize[0], cSize[1]);
+						pickers[name] = pickers[name].setSize(cSize[0], cSize[1]);
 					}
 					
 					if (urlParams['topBaseUrl'])
 				    {   
-						this[name] = this[name].setOrigin(decodeURIComponent(urlParams['topBaseUrl']));
+						pickers[name] = pickers[name].setOrigin(decodeURIComponent(urlParams['topBaseUrl']));
 					} 
 				    
-					this[name] = this[name].setCallback(mxUtils.bind(this, function(data)
+					pickers[name] = pickers[name].setCallback(mxUtils.bind(this, function(data)
 				        {
 				        	if (data.action == google.picker.Action.PICKED ||
 				        		data.action == google.picker.Action.CANCEL)
@@ -2144,7 +2201,7 @@ DriveClient.prototype.pickFile = function(fn, acceptAllFiles, cancelFn)
 				}
 	
 				mxEvent.addListener(document, 'click', exit);
-				this[name].setVisible(true);
+				pickers[name].setVisible(true);
 			}
 			catch (e)
 			{
@@ -2190,20 +2247,20 @@ DriveClient.prototype.pickFolder = function(fn, force)
 							if (mxEvent.getSource(evt).className == 'picker modal-dialog-bg picker-dialog-bg')
 							{
 								mxEvent.removeListener(document, 'click', exit);
-								this[name].setVisible(false);
+								pickers[name].setVisible(false);
 							}
 						});
 						
-						if (this[name] == null || this[name + 'Token'] != this.token)
+						if (pickers[name] == null || pickers[name + 'Token'] != _token)
 						{
 							// FIXME: Dispose not working
-			//				if (this[name] != null)
+			//				if (pickers[name] != null)
 			//				{
-			//					console.log(name, this[name]);
-			//					this[name].dispose();
+			//					console.log(name, pickers[name]);
+			//					pickers[name].dispose();
 			//				}
 							
-							this[name + 'Token'] = this.token;
+							pickers[name + 'Token'] = _token;
 			
 							// Pseudo-hierarchical directory view, see
 							// https://groups.google.com/forum/#!topic/google-picker-api/FSFcuJe7icQ
@@ -2224,9 +2281,9 @@ DriveClient.prototype.pickFolder = function(fn, force)
 								.setSelectFolderEnabled(true)
 								.setMimeTypes('application/vnd.google-apps.folder');
 							
-							this[name] = new google.picker.PickerBuilder()
+							pickers[name] = new google.picker.PickerBuilder()
 								.setSelectableMimeTypes('application/vnd.google-apps.folder')
-						        .setOAuthToken(this[name + 'Token'])
+						        .setOAuthToken(pickers[name + 'Token'])
 						        .setLocale(mxLanguage)
 						        .setAppId(this.appId)
 							    .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
@@ -2239,15 +2296,15 @@ DriveClient.prototype.pickFolder = function(fn, force)
 							if (urlParams['gPickerSize'])
 							{
 								var cSize = urlParams['gPickerSize'].split(',');
-								this[name] = this[name].setSize(cSize[0], cSize[1]);
+								pickers[name] = pickers[name].setSize(cSize[0], cSize[1]);
 							}
 
 							if (urlParams['topBaseUrl'])
 						    {   
-								this[name] = this[name].setOrigin(decodeURIComponent(urlParams['topBaseUrl']));
+								pickers[name] = pickers[name].setOrigin(decodeURIComponent(urlParams['topBaseUrl']));
 							} 
 
-					        this[name] = this[name].setCallback(mxUtils.bind(this, function(data)
+					        pickers[name] = pickers[name].setCallback(mxUtils.bind(this, function(data)
 						        {
 						        	if (data.action == google.picker.Action.PICKED ||
 						        		data.action == google.picker.Action.CANCEL)
@@ -2260,7 +2317,7 @@ DriveClient.prototype.pickFolder = function(fn, force)
 						}
 			
 						mxEvent.addListener(document, 'click', exit);
-						this[name].setVisible(true);
+						pickers[name].setVisible(true);
 					}
 					catch (e)
 					{
@@ -2331,22 +2388,22 @@ DriveClient.prototype.pickLibrary = function(fn)
 					if (mxEvent.getSource(evt).className == 'picker modal-dialog-bg picker-dialog-bg')
 					{
 						mxEvent.removeListener(document, 'click', exit);
-						this.libraryPicker.setVisible(false);
+						pickers.libraryPicker.setVisible(false);
 					}
 				});
 				
 				// Reuses picker as long as token doesn't change
 				
-				if (this.libraryPicker == null || this.libraryPickerToken != this.token)
+				if (pickers.libraryPicker == null || pickers.libraryPickerToken != _token)
 				{
 					// FIXME: Dispose not working
-	//				if (this[name] != null)
+	//				if (pickers[name] != null)
 	//				{
-	//					console.log(name, this[name]);
-	//					this[name].dispose();
+	//					console.log(name, pickers[name]);
+	//					pickers[name].dispose();
 	//				}
 					
-					this.libraryPickerToken = this.token;
+					pickers.libraryPickerToken = _token;
 	
 					// Pseudo-hierarchical directory view, see
 					// https://groups.google.com/forum/#!topic/google-picker-api/FSFcuJe7icQ
@@ -2367,8 +2424,8 @@ DriveClient.prototype.pickLibrary = function(fn)
 					var view4 = new google.picker.DocsUploadView()
 						.setIncludeFolders(true);
 					
-				    this.libraryPicker = new google.picker.PickerBuilder()
-				        .setOAuthToken(this.libraryPickerToken)
+				    pickers.libraryPicker = new google.picker.PickerBuilder()
+				        .setOAuthToken(pickers.libraryPickerToken)
 				        .setLocale(mxLanguage)
 				        .setAppId(this.appId)
 				        .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
@@ -2381,15 +2438,15 @@ DriveClient.prototype.pickLibrary = function(fn)
 					if (urlParams['gPickerSize'])
 					{
 						var cSize = urlParams['gPickerSize'].split(',');
-						this.libraryPicker = this.libraryPicker.setSize(cSize[0], cSize[1]);
+						pickers.libraryPicker = pickers.libraryPicker.setSize(cSize[0], cSize[1]);
 					}
 
 					if (urlParams['topBaseUrl'])
 				    {   
-						this.libraryPicker = this.libraryPicker.setOrigin(decodeURIComponent(urlParams['topBaseUrl']));
+						pickers.libraryPicker = pickers.libraryPicker.setOrigin(decodeURIComponent(urlParams['topBaseUrl']));
 					}
 					 
-				    this.libraryPicker = this.libraryPicker.setCallback(mxUtils.bind(this, function(data)
+				    pickers.libraryPicker = pickers.libraryPicker.setCallback(mxUtils.bind(this, function(data)
 				        {
 					        	if (data.action == google.picker.Action.PICKED ||
 					        		data.action == google.picker.Action.CANCEL)
@@ -2405,7 +2462,7 @@ DriveClient.prototype.pickLibrary = function(fn)
 				}
 				
 				mxEvent.addListener(document, 'click', exit);
-				this.libraryPicker.setVisible(true);
+				pickers.libraryPicker.setVisible(true);
 			}
 			catch (e)
 			{
@@ -2445,7 +2502,7 @@ DriveClient.prototype.showPermissions = function(id)
 			try
 			{
 				var shareClient = new gapi.drive.share.ShareClient(this.appId);
-				shareClient.setOAuthToken(this.token);
+				shareClient.setOAuthToken(_token);
 				shareClient.setItemIds([id]);
 				shareClient.showSettingsDialog();
 				
@@ -2533,9 +2590,10 @@ DriveClient.prototype.setPersistentToken = function(userAuthInfo, sessionOnly)
 	userAuthInfo.userId = this.userId;
 	authInfo.current = userAuthInfo;
 	authInfo[this.userId] = {
-		refresh_token: userAuthInfo.refresh_token,
 		user: this.user
 	};
 	
 	DrawioClient.prototype.setPersistentToken.call(this, JSON.stringify(authInfo), sessionOnly);
 };
+
+})();

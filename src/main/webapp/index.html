@@ -265,27 +265,32 @@
 		if (urlParams['dev'] == '1')
 		{
 			// Used to request grapheditor/mxgraph sources in dev mode
-			var mxDevUrl = document.location.origin + document.location.pathname + '../../../mxgraph';
+
+			mxBasePath = document.location.origin + document.location.pathname + '../../../mxgraph/javascript/src/';
+			var mxClientPath = mxBasePath + 'js/mxClient.js';
 			
 			// Used to request draw.io sources in dev mode:  /src/main/webapp/
 			var drawDevUrl = document.location.origin + document.location.pathname;
 			
 			if (document.location.protocol == 'file:')
 			{
-				mxDevUrl = '/mxgraph';
+				// Electron??
+
+				mxClientPath = './mxgraph/mxClient.js';
+				mxBasePath = './mxgraph';
 				drawDevUrl = './';
 				
 				// Forces includes for dev environment in node.js
 				mxForceIncludes = true;
 			}
 
-			var geBasePath = mxDevUrl + '/javascript/examples/grapheditor/www/js';
-			var mxBasePath = mxDevUrl + '/javascript/src';
+			// Global variable
+			geBasePath = drawDevUrl + 'js/grapheditor';
 			
 			mxscript(drawDevUrl + 'js/PreConfig.js');
 			mxscript(drawDevUrl + 'js/diagramly/Init.js');
 			mxscript(geBasePath + '/Init.js');
-			mxscript(mxDevUrl + '/javascript/src/js/mxClient.js');
+			mxscript(mxClientPath);
 			
 			// Adds all JS code that depends on mxClient. This indirection via Devel.js is
 			// required in some browsers to make sure mxClient.js (and the files that it
@@ -335,7 +340,7 @@
 									{
 										mxscript('js/stencils.min.js', function()
 										{
-											mxscript('js/shapes.min.js', function()
+											mxscript('js/shapes-14-6-5.min.js', function()
 											{
 												mxscript('js/PostConfig.js');
 											});

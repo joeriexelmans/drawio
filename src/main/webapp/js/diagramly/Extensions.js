@@ -8,17 +8,18 @@ LucidImporter = {};
 (function()
 {
 	// Global import transformation
-	var defaultFontSize = '11';
-	var scale = 0.6;
+	var defaultFontSize = '13';
+	var defaultLucidFont = 'Liberation Sans';
+	var scale = 0.75;
 	var dx = 0;
 	var dy = 0;
 	
 	var arcSize = 6;
 	var edgeStyle = 'html=1;jettySize=18;';
-	var vertexStyle = 'html=1;overflow=block;whiteSpace=wrap;';
+	var vertexStyle = 'html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;';
 	var labelStyle = 'text;html=1;resizable=0;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;';
 	
-	var c = 'fillColor=#036897;strokeColor=#ffffff';
+	var c = 'verticalLabelPosition=bottom;verticalAlign=top;fillColor=#036897;strokeColor=#ffffff';
 	var s = 'shape=mxgraph.';
 	var ss = 'strokeColor=none;shape=mxgraph.';
 	var ssAzure = 'verticalLabelPosition=bottom;verticalAlign=top;' + ss;
@@ -27,8 +28,9 @@ LucidImporter = {};
 	var gcpIcon = 'html=1;verticalLabelPosition=bottom;verticalAlign=top;strokeColor=none;shape=mxgraph.gcp2.';
 	var kupIcon = 'html=1;verticalLabelPosition=bottom;verticalAlign=top;strokeColor=none;shape=mxgraph.kubernetes.icon;prIcon=';
 	
-	//Instead of doing a massive code refactoring, this ugly global variable is used
+	//Instead of doing a massive code refactoring, thees ugly global variables are used
 	var isLastLblHTML = false;
+	var gFontFamilyStyle = '';
 	
 	//stencils to rotate counter clockwise 90 degrees
 	var rccw = [
@@ -44,24 +46,30 @@ LucidImporter = {};
 	];
 	
 	var edgeStyleMap = {
-						'None': 'none;',
-						'Arrow': 'block;endFill=1;',
-						'Hollow Arrow': 'block;endFill=0;',
-						'Open Arrow': 'open;',
-						'CFN ERD Zero Or More Arrow': 'ERzeroToMany;startSize=10;',
-						'CFN ERD One Or More Arrow': 'ERoneToMany;startSize=10;',
-						'CFN ERD Many Arrow': 'ERmany;startSize=10;',
-						'CFN ERD Exactly One Arrow': 'ERmandOne;startSize=10;',
-						'CFN ERD Zero Or One Arrow': 'ERzeroToOne;startSize=10;',
-						'CFN ERD One Arrow': 'ERone;startSize=16;',
-						'Generalization': 'block;endFill=0;startSize=12;',
-						'Big Open Arrow': 'open;startSize=10;',
-						'Asynch1': 'openAsync;flipH=1;startSize=10;',
-						'Asynch2': 'openAsync;startSize=10;',
-						'Aggregation': 'diamond;endFill=0;startSize=16;',
-						'Composition': 'diamond;endFill=1;startSize=16;',
-						'BlockEnd': 'none;endFill=1;startSize=16;',
-						'Measure': 'ERone;startSize=10;'
+			'None': 'none;',
+			'Arrow': 'block;xyzFill=1;',
+			'Hollow Arrow': 'block;xyzFill=0;',
+			'Open Arrow': 'open;',
+			'CFN ERD Zero Or More Arrow': 'ERzeroToMany;xyzSize=10;',
+			'CFN ERD One Or More Arrow': 'ERoneToMany;xyzSize=10;',
+			'CFN ERD Many Arrow': 'ERmany;xyzSize=10;',
+			'CFN ERD Exactly One Arrow': 'ERmandOne;xyzSize=10;',
+			'CFN ERD Zero Or One Arrow': 'ERzeroToOne;xyzSize=10;',
+			'CFN ERD One Arrow': 'ERone;xyzSize=16;',
+			'Generalization': 'block;xyzFill=0;xyzSize=12;',
+			'Big Open Arrow': 'open;xyzSize=10;',
+			'Asynch1': 'openAsync;flipV=1;xyzSize=10;',
+			'Asynch2': 'openAsync;xyzSize=10;',
+			'Aggregation': 'diamond;xyzFill=0;xyzSize=16;',
+			'Composition': 'diamond;xyzFill=1;xyzSize=16;',
+			'BlockEnd': 'box;xyzFill=0;xyzSize=16;',
+			'Measure': 'ERone;xyzSize=10;',
+			'CircleOpen': 'oval;xyzFill=0;xyzSize=16;',
+			'CircleClosed': 'oval;xyzFill=1;xyzSize=16;',
+			'BlockEndFill': 'box;xyzFill=1;xyzSize=16;',
+			'Nesting': 'circlePlus;xyzSize=7;xyzFill=0;',
+			'BPMN Conditional': 'diamond;xyzFill=0;',
+			'BPMN Default': 'dash;'
 	};
 
 	var styleMap = {
@@ -75,6 +83,8 @@ LucidImporter = {};
 			'HotspotBlock': 'strokeColor=none;fillColor=none',
 			'ImageSearchBlock2': 'shape=image',
 			'UserImage2Block': 'shape=image',
+			'ExtShapeBoxBlock': '',
+			'DefaultStickyNoteBlock': 'shadow=1',
 //Flowchart
 			'ProcessBlock': '',
 			'DecisionBlock': 'rhombus',
@@ -86,13 +96,13 @@ LucidImporter = {};
 			'PreparationBlock': 'shape=hexagon;perimeter=hexagonPerimeter2',
 			'DataBlock': 'shape=parallelogram;perimeter=parallelogramPerimeter;anchorPointDirection=0',
 			'DataBlockNew': 'shape=parallelogram;perimeter=parallelogramPerimeter;anchorPointDirection=0',
-			'DatabaseBlock': 'shape=cylinder;size=0.1;anchorPointDirection=0;boundedLbl=1;',
-			'DirectAccessStorageBlock': 'shape=cylinder;direction=south;size=0.1;anchorPointDirection=0;boundedLbl=1;',
-			'InternalStorageBlock': 'shape=internalStorage;dx=10;dy=10',
+			'DatabaseBlock': 'shape=cylinder3;size=4;anchorPointDirection=0;boundedLbl=1;',
+			'DirectAccessStorageBlock': 'shape=cylinder3;direction=south;size=10;anchorPointDirection=0;boundedLbl=1;',
+			'InternalStorageBlock': cs,
 			'PaperTapeBlock': 'shape=tape;size=0.2',
 			'ManualOperationBlockNew': 'shape=trapezoid;perimeter=trapezoidPerimeter;anchorPointDirection=0;flipV=1',
 			'DelayBlock': 'shape=delay',
-			'StoredDataBlock': 'shape=dataStorage',
+			'StoredDataBlock': 'shape=cylinder3;boundedLbl=1;size=15;lid=0;direction=south;',
 			'MergeBlock': 'triangle;direction=south;anchorPointDirection=0',
 			'ConnectorBlock': 'ellipse',
 			'OrBlock': s + 'flowchart.summing_function',
@@ -114,17 +124,18 @@ LucidImporter = {};
 			'BraceBlockRotated': cs,
 			'BracketBlockRotated': cs,
 //Geometric shapes
-			'IsoscelesTriangleBlock': 'triangle;direction=north;anchorPointDirection=0',
+			'IsoscelesTriangleBlock': 'shape=mxgraph.basic.acute_triangle;dx=0.5;anchorPointDirection=0',
 			'RightTriangleBlock': s + 'basic.orthogonal_triangle',
 			'PentagonBlock': s + 'basic.pentagon',
 			'HexagonBlock': 'shape=hexagon;perimeter=hexagonPerimeter2',
-			'OctagonBlock': s + 'basic.octagon',
+			'OctagonBlock': s + 'basic.octagon2;dx=15;',
 			'CrossBlock': 'shape=cross;size=0.6',
 			'CloudBlock': 'ellipse;shape=cloud',
 			'HeartBlock': s + 'basic.heart',
 			'RightArrowBlock': cs,
 			'DoubleArrowBlock': cs,
 			'CalloutBlock': s + 'basic.rectangular_callout',
+			'CalloutSquareBlock': cs,
 			'ShapeCircleBlock': 'ellipse',
 			'ShapePolyStarBlock': s + 'basic.star',
 			'ShapeDiamondBlock': 'rhombus',
@@ -219,7 +230,7 @@ LucidImporter = {};
 			'MindMapDiamondBlock' : 'shape=rhombus',
 			'MindMapPentagonBlock' : s + 'basic.pentagon',
 			'MindMapHexagonBlock' : 'shape=hexagon;perimeter=hexagonPerimeter2',
-			'MindMapOctagonBlock' : s + 'basic.octagon',
+			'MindMapOctagonBlock' : s + 'basic.octagon2;dx=10;',
 			'MindMapCrossBlock' : s + 'basic.cross2;dx=20',
 //Entity Relationship
 			'ERDEntityBlock' : cs,
@@ -230,7 +241,8 @@ LucidImporter = {};
 			'UMLClassBlock': cs,
 			'UMLActiveClassBlock': 'shape=process',
 			'UMLMultiplicityBlock' : cs,
-			'UMLPackageBlock': 'shape=folder;tabPosition=left',
+//			'UMLPackageBlock': 'shape=folder;tabPosition=left',
+			'UMLPackageBlock': '',
 			'UMLConstraintBlock' : cs,
 			'UMLNoteBlock': 'shape=note;size=15',
 			'UMLNoteBlockV2': 'shape=note;size=15',
@@ -271,8 +283,8 @@ LucidImporter = {};
 //UML Component
 			'UMLComponentBlock' : 'shape=component;align=left;spacingLeft=36',
 			'UMLComponentBlockV2' : 'shape=component;align=left;spacingLeft=36',
-			'UMLNodeBlock' : 'shape=cube;size=12;flipH=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=5',
-			'UMLNodeBlockV2' : 'shape=cube;size=12;flipH=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=5',
+			'UMLNodeBlock' : 'shape=cube;size=20;flipH=1;verticalAlign=top;spacingTop=22;spacingLeft=5',
+			'UMLNodeBlockV2' : 'shape=cube;size=20;flipH=1;verticalAlign=top;spacingTop=22;spacingLeft=5',
 			'UMLComponentInterfaceBlock' : 'ellipse',
 			'UMLComponentInterfaceBlockV2' : 'ellipse',
 			'UMLComponentBoxBlock' : cs,
@@ -296,7 +308,7 @@ LucidImporter = {};
 //BPMN 2.0
 			'BPMNActivity' : cs,
 			'BPMNEvent' : cs,
-			'BPMNChoreography' : cs, //TODO
+			'BPMNChoreography' : cs,
 			'BPMNConversation' : cs,
 			'BPMNGateway' : cs,
 			'BPMNData' : cs,
@@ -310,14 +322,14 @@ LucidImporter = {};
 			'DFDExternalEntityBlock2' : '',
 			'YDMDFDProcessBlock' : 'ellipse',
 			'YDMDFDDataStoreBlock' : 'shape=partialRectangle;right=0;left=0',
-			'GSDFDProcessBlock' : 'shape=swimlane;rounded=1;arcSize=10',
+			'GSDFDProcessBlock' : cs,
 			'GSDFDProcessBlock2' : 'rounded=1;arcSize=10;',
 			'GSDFDDataStoreBlock' : cs,
 			'GSDFDDataStoreBlock2' : 'shape=partialRectangle;right=0',
 //Org Chart
-			'OrgBlock' : '',
+			'OrgBlock' : cs,
 //Tables
-			'DefaultTableBlock' : cs, //TODO
+			'DefaultTableBlock' : cs,
 //Value Stream Mapping			
 //Processes
 			'VSMCustomerSupplierBlock' : s + 'lean_mapping.outside_sources',
@@ -334,8 +346,8 @@ LucidImporter = {};
 //Shipments
 			'VSMExternalShipmentAirplaneBlock' : s + 'lean_mapping.airplane_7',
 			'VSMExternalShipmentForkliftBlock' : s + 'lean_mapping.move_by_forklift',
-			'VSMExternalShipmentTruckBlock' : s + 'lean_mapping.truck_shipment',
-			'VSMExternalShipmentBoatBlock' : s + 'lean_mapping.boat_shipment',
+			'VSMExternalShipmentTruckBlock' : s + 'lean_mapping.truck_shipment;align=left;',
+			'VSMExternalShipmentBoatBlock' : s + 'lean_mapping.boat_shipment;verticalAlign=bottom;',
 //Information
 			'VSMProductionControlBlock' : cs,
 			'VSMOtherInformationBlock' : '',
@@ -349,7 +361,7 @@ LucidImporter = {};
 //Value Stream Mapping
 			'VSMKaizenBurstBlock' : s + 'lean_mapping.kaizen_lightening_burst',
 			'VSMOperatorBlock' : s + 'lean_mapping.operator;flipV=1',
-			'VSMTimelineBlock' : cs, //TODO
+			'VSMTimelineBlock' : cs, //TODO Timeline shape
 			'VSMQualityProblemBlock' : s + 'lean_mapping.quality_problem',
 //Kanban
 			'VSMProductionKanbanSingleBlock' : 'shape=card;size=18;flipH=1;',
@@ -361,7 +373,7 @@ LucidImporter = {};
 //Arrows
 			'VSMShipmentArrow': 'shape=singleArrow;arrowWidth=0.5;arrowSize=0.13',
 			'VSMPushArrow' : s + 'lean_mapping.push_arrow',
-//			'VSMElectronicInformationArrow' : s + 'lean_mapping.electronic_info_flow_edge;', //TODO
+			'VSMElectronicInformationArrow' : cs,
 //EC2
 			'AWSElasticComputeCloudBlock2' : cs,
 //			'AWSElasticComputeCloudBlock2' : ss + 'aws3.ec2;verticalLabelPosition=bottom;align=center;verticalAlign=top',
@@ -1354,7 +1366,7 @@ LucidImporter = {};
 //Cisco Basic
 			'Cisco_cisco_androgenous_person' : s + 'cisco.people.androgenous_person;' + c,
 			'Cisco_cisco_atm_switch' : s + 'cisco.switches.atm_switch;' + c,
-			'Cisco_cisco_cloud' : s + 'cisco.storage.cloud;strokeColor=#036897;fillColor=#ffffff',
+			'Cisco_cisco_cloud' : s + 'cisco.storage.cloud;verticalLabelPosition=bottom;verticalAlign=top;strokeColor=#036897;fillColor=#ffffff',
 			'Cisco_cisco_fileserver' : s + 'cisco.servers.fileserver;' + c,
 			'Cisco_cisco_firewall' : s + 'cisco.security.firewall;' + c,
 			'Cisco_cisco_generic_building' : s + 'cisco.buildings.generic_building;' + c,
@@ -1448,7 +1460,7 @@ LucidImporter = {};
 			'Cisco_cisco_end_office' : s + 'cisco.buildings.end_office;' + c,
 			'Cisco_cisco_fax' : s + 'cisco.modems_and_phones.fax;' + c,
 			'Cisco_cisco_fc_storage' : s + 'cisco.storage.fc_storage;' + c,
-			'Cisco_cisco_fddi_ring' : s + 'cisco.misc.fddi_ring;strokeColor=#036897;',
+			'Cisco_cisco_fddi_ring' : s + 'cisco.misc.fddi_ring;verticalLabelPosition=bottom;verticalAlign=top;strokeColor=#036897;',
 			'Cisco_cisco_fibre_channel_disk_subsystem' : s + 'cisco.storage.fibre_channel_disk_subsystem;' + c,
 			'Cisco_cisco_fibre_channel_fabric_switch' : s + 'cisco.switches.fibre_channel_fabric_switch;' + c,
 			'Cisco_cisco_file_cabinet' : s + 'cisco.storage.file_cabinet;' + c,
@@ -1542,7 +1554,7 @@ LucidImporter = {};
 			'Cisco_cisco_optical_transport' : s + 'cisco.misc.optical_transport;' + c,
 			'Cisco_cisco_pad' : s + 'cisco.misc.pad_2;' + c,
 			'Cisco_cisco_pad_x' : s + 'cisco.misc.pad_1;' + c,
-			'Cisco_cisco_page_icon' : s + 'cisco.misc.page_icon;strokeColor=#036897;',
+			'Cisco_cisco_page_icon' : s + 'cisco.misc.page_icon;verticalLabelPosition=bottom;verticalAlign=top;strokeColor=#036897;',
 			'Cisco_cisco_pbx' : s + 'cisco.misc.pbx;' + c,
 			'Cisco_cisco_pbx_switch' : s + 'cisco.switches.pbx_switch;' + c,
 			'Cisco_cisco_pc_adapter_card' : s + 'cisco.computers_and_peripherals.pc_adapter_card;' + c,
@@ -1556,7 +1568,7 @@ LucidImporter = {};
 			'Cisco_cisco_programmable_switch' : s + 'cisco.switches.programmable_switch;' + c,
 			'Cisco_cisco_protocol_translator' : s + 'cisco.misc.protocol_translator;' + c,
 			'Cisco_cisco_pxf' : s + 'cisco.misc.pxf;' + c,
-			'Cisco_cisco_radio_tower' : s + 'cisco.wireless.radio_tower;strokeColor=#036897',
+			'Cisco_cisco_radio_tower' : s + 'cisco.wireless.radio_tower;verticalLabelPosition=bottom;verticalAlign=top;strokeColor=#036897',
 			'Cisco_cisco_ratemux' : s + 'cisco.misc.ratemux;' + c,
 			'Cisco_cisco_repeater' : s + 'cisco.misc.repeater;' + c,
 			'Cisco_cisco_RF_modem' : s + 'cisco.modems_and_phones.rf_modem;' + c,
@@ -1609,7 +1621,7 @@ LucidImporter = {};
 			'Cisco_cisco_Telepresence_3200' : s + 'cisco.misc.telepresence;' + c,
 //			'Cisco_cisco_Telepresence_500' NA
 			'Cisco_cisco_terminal' : s + 'cisco.computers_and_peripherals.terminal;' + c,
-			'Cisco_cisco_token' : s + 'cisco.misc.token;strokeColor=#036897',
+			'Cisco_cisco_token' : s + 'cisco.misc.token;verticalLabelPosition=bottom;verticalAlign=top;strokeColor=#036897',
 			'Cisco_cisco_TP_MCU' : s + 'cisco.misc.tp_mcu;' + c,
 			'Cisco_cisco_transpath' : s + 'cisco.misc.transpath;' + c,
 			'Cisco_cisco_truck' : s + 'cisco.misc.truck;' + c,
@@ -1649,62 +1661,62 @@ LucidImporter = {};
 			'Cisco_cisco_workstation' : s + 'cisco.computers_and_peripherals.workstation;' + c,
 			'Cisco_cisco_www_server' : s + 'cisco.servers.www_server;' + c,
 //Computers and Monitors
-			'NET_PC' : s + 'networks.pc;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Virtual-PC' : s + 'networks.virtual_pc;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Terminal' : s + 'networks.terminal;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_DataPipe' : s + 'networks.bus;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_SlateDevice' : s + 'networks.tablet;fillColor=#29AAE1;strokeColor=#ffffff', 
-			'NET_TabletDevice' : s + 'networks.tablet;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Laptop' : s + 'networks.laptop;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_PDA' : s + 'networks.mobile;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_CRTMonitor' : s + 'networks.monitor;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_LCDMonitor' : s + 'networks.monitor;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_PC' : s + 'networks.pc;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Virtual-PC' : s + 'networks.virtual_pc;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Terminal' : s + 'networks.terminal;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_DataPipe' : s + 'networks.bus;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_SlateDevice' : s + 'networks.tablet;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;', 
+			'NET_TabletDevice' : s + 'networks.tablet;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Laptop' : s + 'networks.laptop;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_PDA' : s + 'networks.mobile;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_CRTMonitor' : s + 'networks.monitor;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_LCDMonitor' : s + 'networks.monitor;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //Detailed Network Diagrams
 //			'NET_ABSwitch' NA
 //			'NET_Repeater' NA
 //			'NET_DiagnosticDevice' NA
 //			'NET_CardReader' NA
 //			'NET_PatchPanel' NA
-			'NET_RadioTower' : s + 'networks.radio_tower;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_RadioTower' : s + 'networks.radio_tower;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_BiometricReader' NA
-			'NET_ExternalHardDrive' : s + 'networks.external_storage;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_ExternalHardDrive' : s + 'networks.external_storage;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_WebService' NA
 //			'NET_FiberOptic' NA
-			'NET_SatelliteDish' : s + 'networks.satellite_dish;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Satellite' : s + 'networks.satellite;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_SatelliteDish' : s + 'networks.satellite_dish;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Satellite' : s + 'networks.satellite;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_VoIPPhone' NA
 //			'NET_PBX' NA
 //			'NET_MLPS' NA
 //Basic Network Shapes
-			'NET_WirelessAccessPoint' : s + 'networks.radio_tower;fillColor=#29AAE1;strokeColor=#29AAE1',
+			'NET_WirelessAccessPoint' : s + 'networks.radio_tower;fillColor=#29AAE1;strokeColor=#29AAE1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 			'NET_RingNetwork' : cs,
 			'NET_Ethernet' : cs,
-			'NET_Server' : s + 'networks.server;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_Server' : s + 'networks.server;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_ExternalMediaDrive' NA
-			'NET_Mainframe' : s + 'networks.mainframe;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Router' : s + 'networks.wireless_hub;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Switch' : s + 'networks.switch;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Firewall' : s + 'networks.firewall;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_User' : s + 'networks.user_male;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_CommLink' : s + 'networks.comm_link_edge;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_SuperComputer' : s + 'networks.supercomputer;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_VirtualServer' : s + 'networks.virtual_server;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Printer' : s + 'networks.printer;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_Mainframe' : s + 'networks.mainframe;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Router' : s + 'networks.wireless_hub;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Switch' : s + 'networks.switch;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Firewall' : s + 'networks.firewall;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_User' : s + 'networks.user_male;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_CommLink' : s + 'networks.comm_link_edge;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_SuperComputer' : s + 'networks.supercomputer;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_VirtualServer' : s + 'networks.virtual_server;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Printer' : s + 'networks.printer;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_Plotter' NA
-			'NET_Scanner' : s + 'networks.scanner;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Copier' : s + 'networks.copier;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_Scanner' : s + 'networks.scanner;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Copier' : s + 'networks.copier;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_FaxMachine' NA
-			'NET_MultiFunctionMachine' : s + 'networks.copier;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Projector' : s + 'networks.video_projector;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_ProjectorScreen' : s + 'networks.video_projector_screen;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Bridge' : s + 'networks.router;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Hub' : s + 'networks.hub;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Modem' : s + 'networks.modem;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_Telephone' : s + 'signs.tech.telephone_5;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_CellPhone' : s + 'networks.mobile;fillColor=#29AAE1;strokeColor=#ffffff',
-			'NET_SmartPhone' : s + 'networks.mobile;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_MultiFunctionMachine' : s + 'networks.copier;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Projector' : s + 'networks.video_projector;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_ProjectorScreen' : s + 'networks.video_projector_screen;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Bridge' : s + 'networks.router;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Hub' : s + 'networks.hub;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Modem' : s + 'networks.modem;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_Telephone' : s + 'signs.tech.telephone_5;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_CellPhone' : s + 'networks.mobile;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
+			'NET_SmartPhone' : s + 'networks.mobile;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_VideoPhone' NA
-			'NET_Camera' : s + 'signs.tech.camera_2;fillColor=#29AAE1;strokeColor=#ffffff',
+			'NET_Camera' : s + 'signs.tech.camera_2;fillColor=#29AAE1;strokeColor=#ffffff;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;',
 //			'NET_VideoCamera' NA
 //Server Racks
 			'RackServerRack' : s + 'rackGeneral.container;container=1;collapsible=0;childLayout=rack;marginLeft=9;marginRight=9;marginTop=21;marginBottom=22;textColor=#000000;numDisp=off',
@@ -1791,26 +1803,37 @@ LucidImporter = {};
 			'EE_Lightbulb' : s + 'electrical.miscellaneous.light_bulb',
 			'EE_IntegratedCircuit' : 'shape=mxgraph.electrical.logic_gates.dual_inline_ic',
 //Power Sources
-			'EE_AcSource' : s + 'electrical.signal_sources.ac_source;strokeWidth=1',
-			'EE_VoltageSource' : s + 'electrical.signal_sources.dc_source_3',
-			'EE_CurrentSource' : s + 'electrical.signal_sources.dc_source_2;direction=north',
-			'EE_ControlledCurrentSource' : s + 'electrical.signal_sources.dependent_source_2;direction=west',
-			'EE_ControlledVoltageSource' : s + 'electrical.signal_sources.dependent_source_3',
+			'EE_AcSource' : s + 'electrical.signal_sources.ac_source;strokeWidth=1;verticalLabelPosition=middle;align=left;verticalAlign=top;labelPosition=right;',
+			'EE_VoltageSource' : s + 'electrical.signal_sources.dc_source_3;verticalLabelPosition=middle;align=left;verticalAlign=top;labelPosition=right;',
+			'EE_CurrentSource' : s + 'electrical.signal_sources.dc_source_2;direction=north;verticalLabelPosition=middle;align=left;verticalAlign=top;labelPosition=right;',
+			'EE_ControlledCurrentSource' : s + 'electrical.signal_sources.dependent_source_2;direction=west;verticalLabelPosition=middle;align=left;verticalAlign=top;labelPosition=right;',
+			'EE_ControlledVoltageSource' : s + 'electrical.signal_sources.dependent_source_3;verticalLabelPosition=middle;align=left;verticalAlign=top;labelPosition=right;',
 			'EE_DcSource1' : s + 'electrical.miscellaneous.monocell_battery;flipH=1;verticalLabelPosition=bottom;verticalAlign=top',
 			'EE_DcSource2' : s + 'electrical.miscellaneous.multicell_battery;flipH=1;verticalLabelPosition=bottom;verticalAlign=top',
 			'EE_Vss' : s + 'electrical.signal_sources.vss2;verticalLabelPosition=top;verticalAlign=bottom;fontSize=24',
 			'EE_Vdd' : s + 'electrical.signal_sources.vdd;verticalLabelPosition=bottom;verticalAlign=top',
 //Transistors
+			
 			'EE_BJT_NPN1' : s + 'electrical.transistors.pnp_transistor_1',
+			'EE_BJT_NPN1_V2' : s + 'electrical.transistors.npn_transistor_1;',
 			'EE_BJT_PNP1' : s + 'electrical.transistors.npn_transistor_1',
+			'EE_BJT_PNP1_V2' : s + 'electrical.transistors.pnp_transistor_1',
 			'EE_JFET_P' : s + 'electrical.transistors.p-channel_jfet_1;flipV=1',
+			'EE_JFET_P_V2' : s + 'electrical.transistors.p-channel_jfet_1;flipV=1',
 			'EE_JFET_N' : s + 'electrical.transistors.n-channel_jfet_1',
+			'EE_JFET_N_V2' : s + 'electrical.transistors.n-channel_jfet_1',
 			'EE_MOSFET_P1' : s + 'electrical.mosfets1.mosfet_ic_p;flipV=1',
+			'EE_MOSFET_P1_V2' : s + 'electrical.mosfets1.mosfet_ic_p;flipV=1',
 			'EE_MOSFET_P2' : s + 'electrical.mosfets1.mosfet_p_no_bulk',
+			'EE_MOSFET_P2_V2' : s + 'electrical.mosfets1.mosfet_p_no_bulk',
 			'EE_MOSFET_P3' : s + 'electrical.mosfets1.p-channel_mosfet_1;flipV=1',
+			'EE_MOSFET_P3_V2' : s + 'electrical.mosfets1.p-channel_mosfet_1;flipV=1',
 			'EE_MOSFET_N1' : s + 'electrical.mosfets1.mosfet_ic_n',
+			'EE_MOSFET_N1_V2' : s + 'electrical.mosfets1.mosfet_ic_n',
 			'EE_MOSFET_N2' : s + 'electrical.mosfets1.mosfet_n_no_bulk',
+			'EE_MOSFET_N2_V2' : s + 'electrical.mosfets1.mosfet_n_no_bulk',
 			'EE_MOSFET_N3' : s + 'electrical.mosfets1.n-channel_mosfet_1',
+			'EE_MOSFET_N3_V2' : s + 'electrical.mosfets1.n-channel_mosfet_1',
 //Relays
 //			'EE_SPST' NA
 //			'EE_SPDT' NA
@@ -2046,6 +2069,20 @@ LucidImporter = {};
 			'GCPIconGenericBlock' : gcpIcon + 'placeholder',
 			'GCPIconPredictionAPIBlock' : gcpIcon + 'prediction_api',
 			//'GCPGoogleCloudPlatformLockupBlock' : gcpIcon + 'gcp_google_cloud_platform_lockup',
+			'GCPAutoScalingModifier' : 'shape=mxgraph.gcp2.modifiers_autoscaling;fillColor=#757575;strokeColor=none;',
+			'GCPCustomVirtualMachineModifier' : 'shape=mxgraph.gcp2.modifiers_custom_virtual_machine;fillColor=#757575;strokeColor=none;',
+			'GCPHighCPUMachineModifier' : 'shape=mxgraph.gcp2.modifiers_high_cpu_machine;fillColor=#757575;strokeColor=none;',
+			'GCPHighMemoryMachineModifier' : 'shape=mxgraph.gcp2.modifiers_high_memory_machine;fillColor=#757575;strokeColor=none;',
+			'GCPPreemptableVSModifier' : 'shape=mxgraph.gcp2.modifiers_preemptable_vm;fillColor=#757575;strokeColor=none;',
+			'GCPSharedCoreMachineF1Modifier' : 'shape=mxgraph.gcp2.modifiers_shared_core_machine_f1;fillColor=#757575;strokeColor=none;',
+			'GCPSharedCoreMachineG1Modifier' : 'shape=mxgraph.gcp2.modifiers_shared_core_machine_g1;fillColor=#757575;strokeColor=none;',
+			'GCPStandardMachineModifier' : 'shape=mxgraph.gcp2.modifiers_standard_machine;fillColor=#757575;strokeColor=none;',
+			'GCPStorageModifier' : 'shape=mxgraph.gcp2.modifiers_storage;fillColor=#757575;strokeColor=none;',
+			'GCPAppEngineProductCard' : cs,
+			'GCPCloudDataflowProductCard' : cs,
+			'GCPCloudDataprocProductCard' : cs,
+			'GCPComputeEngineProductCard' : cs,
+			'GCPContainerEngineProductCard' : cs,
 			
 //Kubernetes Icons
 			'CronjobLabeledKub19' : kupIcon + 'cronjob',
@@ -2122,12 +2159,12 @@ LucidImporter = {};
 			'KubeletLabeledKub19' : kupIcon + 'kubelet',
 			'SchedLabeledKub19' : kupIcon + 'sched',
 //Equation
-			'Equation' : cs, //TODO
+			'Equation' : cs,
 //Walls
-			'fpWall' : '',
+			'fpWall' : cs,
 //Rooms
 //Doors & Windows
-			'fpWindow' : s + 'floorplan.window',
+			'fpWindow' : s + 'floorplan.window;strokeWidth=3',
 			'fpOpening' : 'shape=rect',
 			'fpDoor' : cs,
 			'fpDoubleDoor' : cs,
@@ -2345,7 +2382,7 @@ LucidImporter = {};
 			'PEClarifierBlock' : s + 'pid.vessels.bunker_(conical_bottom);verticalLabelPosition=bottom;verticalAlign=top',
 			'PETankBlock' : s + 'pid.vessels.tank_(conical_roof);verticalLabelPosition=bottom;verticalAlign=top',
 			'PETrayColumnBlock' : s + 'pid2misc.column;columnType=tray;verticalLabelPosition=bottom;verticalAlign=top',
-			'PEReactionVesselBlock' : s + 'pid.vessels.reactor',
+			'PEReactionVesselBlock' : s + 'pid.vessels.reactor;verticalLabelPosition=bottom;verticalAlign=top',
 			'PEBin' : s + 'pid.vessels.tank_(conical_bottom)',
 			'PEDomeRoofTank' : s + 'pid.vessels.tank_(dished_roof)',
 			'PEConeRoofTank' : s + 'pid.vessels.tank_(conical_roof)',
@@ -2371,7 +2408,7 @@ LucidImporter = {};
 			'PEShellAndTubeHeat2Block' : s + 'pid.heat_exchangers.shell_and_tube_heat_exchanger_2;verticalLabelPosition=bottom;verticalAlign=top',
 			'PEShellAndTubeHeat3Block' : s + 'pid.heat_exchangers.shell_and_tube_heat_exchanger_1;direction=north;verticalLabelPosition=bottom;verticalAlign=top',
 			'PESinglePassHeatBlock' : s + 'pid.heat_exchangers.single_pass_heat_exchanger;verticalLabelPosition=bottom;verticalAlign=top',
-			'PEHeaterBlock' : s + 'pid.heat_exchangers.heater',
+			'PEHeaterBlock' : s + 'pid.heat_exchangers.heater;verticalLabelPosition=bottom;verticalAlign=top',
 //Pumps
 			'PEEjectorInjectorBlock' : s + 'pid.fittings.injector;verticalLabelPosition=bottom;verticalAlign=top',
 			'PECompressorTurbineBlock' : cs,
@@ -2454,34 +2491,34 @@ LucidImporter = {};
 //iPhone Elements
 			'iOS7StatusBariPhone' : s + 'ios7ui.appBar',
 //			'iOS7NavBariPhone' NA
-			'iOS7TabsiPhone' : cs, //TODO
-			'iOS7iPhoneActionSheet' : cs, //TODO
+//			'iOS7TabsiPhone' : cs, //TODO
+//			'iOS7iPhoneActionSheet' : cs, //TODO
 			'iOS7iPhoneKeyboard' : s + 'ios7.misc.keyboard_(letters)',
-			'iOS7TableView' : cs, //TODO
+//			'iOS7TableView' : cs, //TODO
 //iPad Elements
 			'iOS7StatusBariPad' : s + 'ios7ui.appBar',
-			'iOS7NavBariPad' : cs, //TODO
-			'iOS7TabsiPad' : cs, //TODO
-			'iOS7iPadActionSheet' : cs, //TODO
+//			'iOS7NavBariPad' : cs, //TODO
+//			'iOS7TabsiPad' : cs, //TODO
+//			'iOS7iPadActionSheet' : cs, //TODO
 			'iOS7iPadKeyboard' : s + 'ios7.misc.keyboard_(letters)',
 //			'iOS7SplitView'
 //			'iOS7iPadPopover'
 //Common Elements
-			'iOS7AlertDialog' : cs, //TODO
+//			'iOS7AlertDialog' : cs, //TODO
 			'iOS7ProgressBar' : s + 'ios7ui.downloadBar', //TODO
 			'iOS7Slider' : s + 'ios7ui.searchBox', //TODO
 			'iOS7SearchBar' : s + 'ios7ui.searchBox', 
 			'iOS7Button' : '',
 			'iOS7TextField' : '',
 			'iOS7TextView' : '',
-			'iOS7SegmentedControl' : cs, //TODO
+//			'iOS7SegmentedControl' : cs, //TODO
 			'iOS7Toggle' : s + 'ios7ui.onOffButton;buttonState=on;strokeColor=#38D145;strokeColor2=#aaaaaa;fillColor=#38D145;fillColor2=#ffffff', //TODO
 			'iOS7Stepper' : s + 'ios7.misc.adjust;fillColor=#ffffff;gradientColor=none',
 			'iOS7PageControls' : s + 'ios7ui.pageControl;fillColor=#666666;strokeColor=#bbbbbb', //TODO
 			'iOS7Block' : '',
-			'iOS7DatePicker' : cs, //TODO
-			'iOS7TimePicker' : cs, //TODO
-			'iOS7CountdownPicker' : cs, //TODO
+//			'iOS7DatePicker' : cs, //TODO
+//			'iOS7TimePicker' : cs, //TODO
+//			'iOS7CountdownPicker' : cs, //TODO
 //iOS Icons
 			'iOS7IconArrow left' : s + 'ios7.misc.left',
 			'iOS7IconArrow' : s + 'ios7.misc.right',
@@ -2578,7 +2615,8 @@ LucidImporter = {};
 			'UI2BrowserBlock' : cs,
 			'UI2WindowBlock' : cs, 
 			'UI2DialogBlock' : cs,
-			'UI2AreaBlock' : '',
+			'UI2AreaBlock' : 'rounded=1;arcSize=3',
+			'UIAreaBlock' : 'rounded=1;arcSize=3;fillColor=none',
 			'UI2ElementBlock' : '',
 			'UI2AccordionBlock' : cs,
 			'UI2TabBarContainerBlock' : cs,
@@ -2609,13 +2647,13 @@ LucidImporter = {};
 			'UI2HorizontalRadioBlock' : cs,
 			'UI2ColorPickerBlock' : s + 'mockup.forms.colorPicker;chosenColor=#aaddff',
 			'UI2TextInputBlock' : '',
-			'UI2SelectBlock' : s + 'mockup.forms.comboBox;strokeColor=#999999;fillColor=#ddeeff;align=left;fillColor2=#aaddff;mainText=;fontColor=#666666',
+			'UI2SelectBlock' : cs,
 			'UI2VSliderBlock' : cs,
 			'UI2HSliderBlock' : cs,
 			'UI2DatePickerBlock' : cs,
 			'UI2SearchBlock' : cs,
 			'UI2NumericStepperBlock' : cs,
-			'UI2TableBlock' : cs, //TODO
+			'UI2TableBlock' : cs,
 //UI Menus
 			'UI2ButtonBarBlock' : cs,
 			'UI2VerticalButtonBarBlock' : cs,
@@ -2625,7 +2663,7 @@ LucidImporter = {};
 			'UI2AtoZBlock' : cs,
 			'UI2PaginationBlock' : cs,
 			'UI2ContextMenuBlock' : cs,
-			'UI2TreePaneBlock' : cs, //TODO
+//			'UI2TreePaneBlock' : cs, //TODO
 			'UI2PlaybackControlsBlock' : s + 'mockup.misc.playbackControls;fillColor=#ffffff;strokeColor=#999999;fillColor2=#99ddff;strokeColor2=none;fillColor3=#ffffff;strokeColor3=none',
 			'Image_ui_formatting_toolbar' : s + 'mockup.menus_and_buttons.font_style_selector_2',
 //UI Misc
@@ -2645,11 +2683,11 @@ LucidImporter = {};
 //			'Image_ipad_bar_black' : '',
 //			'Image_ipad_safari_top' NA
 			'Image_ipad_search' : s + 'mockup.forms.searchBox;mainText=;flipH=1',
-			'Image_ipad_alert_dialog' : cs, //TODO
-			'Image_ipad_dialog' : cs, //TODO
+//			'Image_ipad_alert_dialog' : cs, //TODO
+//			'Image_ipad_dialog' : cs, //TODO
 			'Image_ipad_popover' : s + 'ios.iOption;barPos=50;pointerPos=top;buttonText=',
-			'Image_ipad_table' : cs, //TODO
-			'Image_ipad_vtab' : cs, //TODO
+//			'Image_ipad_table' : cs, //TODO
+//			'Image_ipad_vtab' : cs, //TODO
 //iOS 6 iPad Controls
 			'Image_ipad_button_black' : '',
 			'Image_ipad_button_blue' : '',
@@ -2663,9 +2701,9 @@ LucidImporter = {};
 			'Image_ipad_prev_next' : s + 'ios.iPrevNext;strokeColor=#444444;fillColor=#dddddd;fillColor2=#3D5565;fillColor3=#ffffff',
 			'Image_ipad_keyboard_portrait' : s + 'ios.iKeybLett',
 			'Image_ipad_keyboard_landscape' : s + 'ios.iKeybLett',
-			'Image_ipad_large_tabbed_button' : cs, //TODO
-			'Image_ipad_sort_button' : cs, //TODO
-			'Image_ipad_tab_bar' : cs, //TODO
+//			'Image_ipad_large_tabbed_button' : cs, //TODO
+//			'Image_ipad_sort_button' : cs, //TODO
+//			'Image_ipad_tab_bar' : cs, //TODO
 			'Image_ipad_slider' : s + 'ios.iSlider;barPos=20',
 //			'Image_ipad_switch_off'
 //iOS 6 iPad Icons
@@ -2696,17 +2734,17 @@ LucidImporter = {};
 			'Image_iphone_bar_semi_trans_black' : '',
 			'Image_iphone_bar_semi_trans_blue' : '',
 			'Image_iphone_search' : s + 'mockup.forms.searchBox;mainText=;flipH=1',
-			'Image_iphone_table' : cs, //TODO
-			'Image_iphone_table_w_buttons' : cs, //TODO
-			'Image_iphone_table_w_icons' : cs, //TODO
-			'Image_iphone_list' : cs, //TODO
+//			'Image_iphone_table' : cs, //TODO
+//			'Image_iphone_table_w_buttons' : cs, //TODO
+//			'Image_iphone_table_w_icons' : cs, //TODO
+//			'Image_iphone_list' : cs, //TODO
 //			'Image_iphone_safari_top' NA
 //			'Image_iphone_safari_bottom' NA
-			'Image_iphone_gray_grad_list' : '', //TODO
+//			'Image_iphone_gray_grad_list' : '', //TODO
 //			'Image_iphone_alert_bar' NA
 //			'Image_iphone_alert_dialog' : cs, //TODO
-			'Image_iphone_dialog' : cs, //TODO
-			'Image_iphone_scroll_pane' : cs, //TODO
+//			'Image_iphone_dialog' : cs, //TODO
+//			'Image_iphone_scroll_pane' : cs, //TODO
 			'Image_iphone_alpha_list' : s + 'ios.iAlphaList',
 //iOS 6 iPhone Controls
 			'Image_iphone_button_black' : '',
@@ -2729,11 +2767,11 @@ LucidImporter = {};
 			'Image_iphone_keyboard_button_blue' : '',
 			'Image_iphone_keyboard_letters' : s + 'ios.iKeybLett',
 			'Image_iphone_keyboard_landscape' : s + 'ios.iKeybLett',
-			'Image_iphone_large_tabbed_button' : cs, //TODO
-			'Image_iphone_sort_button' : cs, //TODO
-			'Image_iphone_tab_bar' : cs, //TODO
-			'Image_iphone_picker_multi' : cs, //TODO
-			'Image_iphone_picker_web' : cs, //TODO
+//			'Image_iphone_large_tabbed_button' : cs, //TODO
+//			'Image_iphone_sort_button' : cs, //TODO
+//			'Image_iphone_tab_bar' : cs, //TODO
+//			'Image_iphone_picker_multi' : cs, //TODO
+//			'Image_iphone_picker_web' : cs, //TODO
 //iOS 6 iPhone Icons
 			'Image_iphone_add_icon_blue' : s + 'ios.iAddIcon;fillColor=#8BbEff;fillColor2=#135Ec8;strokeColor=#ffffff',
 			'Image_iphone_add_icon_green' : s + 'ios.iAddIcon;fillColor=#7AdF78;fillColor2=#1A9917;strokeColor=#ffffff',
@@ -2747,7 +2785,7 @@ LucidImporter = {};
 			'Image_iphone_pin_green' : s + 'ios.iPin;fillColor2=#00dd00;fillColor3=#004400;strokeColor=#006600',
 			'Image_iphone_pin_red' : s + 'ios.iPin;fillColor2=#dd0000;fillColor3=#440000;strokeColor=#660000',
 			'Image_iphone_radio_off' : 'ellipse', //TODO
-			'Image_iphone_checkbox_off' : '', //TODO
+//			'Image_iphone_checkbox_off' : '', //TODO
 			'Image_iphone_indicator' : 'fillColor=#e8878E;gradientColor=#BD1421;strokeColor=#ffffff',
 			'Image_iphone_thread_count' : '',
 				
@@ -2848,17 +2886,17 @@ LucidImporter = {};
 			'AmazonConnect2017' : 'shape=mxgraph.aws3.connect;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top',
 			
 // AWS 17 - Containers			
-//			'AutoScalingGroup2017' : '',
-//			'AvailabilityZone2017' : '',
-//			'Region2017' : '',
+			'AutoScalingGroup2017' : 'rounded=1;arcSize=10;dashed=1;dashPattern=8 3 1 3;verticalAlign=bottom',
+			'AvailabilityZone2017' : 'rounded=1;arcSize=10;dashed=1;dashPattern=8 4;verticalAlign=bottom',
+			'Region2017' : 'rounded=1;arcSize=10;dashed=1;dashPattern=1 1;verticalAlign=bottom',
 			'SecurityGroup2017' : 'verticalAlign=bottom',
-//			'ElasticBeanStalkContainer2017' : '',
-//			'EC2InstanceContents2017' : '',
-//			'VPCSubnet2017' : '',
-//			'ServerContents2017' : '',
-//			'VirtualPrivateCloudContainer2017' : '',
-//			'AWSCloudContainer2017' : '',
-//			'CorporateDataCenterContainer2017' : '',
+			'ElasticBeanStalkContainer2017' : cs,
+			'EC2InstanceContents2017' : cs,
+			'VPCSubnet2017' : cs,
+			'ServerContents2017' : 'rounded=1;arcSize=10;dashed=0;fillColor=#DBDBDB;gradientColor=none;verticalAlign=bottom',
+			'VirtualPrivateCloudContainer2017' : cs,
+			'AWSCloudContainer2017' : cs,
+			'CorporateDataCenterContainer2017' : cs,
 			
 // AWS 17 - Database			
 			'AmazonDynamoDB2017' : 'shape=mxgraph.aws3.dynamo_db;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top',
@@ -3116,6 +3154,7 @@ LucidImporter = {};
 			'volume2017' : 'shape=mxgraph.aws3.volume;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top',
 			
 // AWS 19 Analytics			
+			
 			'AnalyticsAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.analytics;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top',
 			'AmazonAthenaAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.athena;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff',
 			'AmazonCloudSearchAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudsearch;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff',
@@ -3207,7 +3246,15 @@ LucidImporter = {};
 			'AWSElasticBeanstalk_ApplicationAWS19' : 'shape=mxgraph.aws4.application;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=none',
 			'AWSElasticBeanstalk_DeploymentAWS19' : 'shape=mxgraph.aws4.deployment;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=none',
 			'AWSLambda_LambdaFunctionAWS19' : 'shape=mxgraph.aws4.lambda_function;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=none',
-
+			'AWSThinkboxDeadlineAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.thinkbox_deadline;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;',
+			'AWSThinkboxDraftAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.thinkbox_draft;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;',
+			'AWSThinkboxFrostAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.thinkbox_frost;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;',
+			'AWSThinkboxKrakatoaAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.thinkbox_krakatoa;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;',
+			'AWSThinkboxSequoiaAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.thinkbox_sequoia;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;',
+			'AWSThinkboxStokeAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.thinkbox_stoke;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;',
+			'AWSThinkboxXMeshAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.thinkbox_xmesh;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;',
+			
+			
 // AWS 19 - Cost Management		
 			'AWSCostManagementAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cost_management;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top',
 			'AWSBudgetsAWS19' : 'shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.budgets;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff',
@@ -3714,8 +3761,8 @@ LucidImporter = {};
 			'GCPInputPhone' : cs,
 			'GCPInputBlank' : cs,
 
-// Site Map			
-//			'SMPage' : s + 'rect',
+// Site Map	
+			'SMPage' : cs,
 			'SMHome' : s + 'sitemap.home;strokeColor=#000000;fillColor=#E6E6E6',
 			'SMGallery' : s + 'sitemap.gallery;strokeColor=#000000;fillColor=#E6E6E6',
 			'SMShopping' : s + 'sitemap.shopping;strokeColor=#000000;fillColor=#E6E6E6',
@@ -3754,9 +3801,9 @@ LucidImporter = {};
 			'PresentationFrameBlock' : cs,
 //Timeline
 //TODO Timeline shapes are postponed, this code is a work-in-progress
-			//'TimelineBlock' : cs,
-			//'TimelineMilestoneBlock' : cs,
-			//'TimelineIntervalBlock' : cs,
+			'TimelineBlock' : cs,
+			'TimelineMilestoneBlock' : cs,
+			'TimelineIntervalBlock' : cs,
 			'MinimalTextBlock' : 'strokeColor=none;fillColor=none',
 //Freehand			
 			'FreehandBlock' : cs,
@@ -3766,6 +3813,67 @@ LucidImporter = {};
 			'ExtShapeCloudBlock': ss + 'citrix.cloud;verticalLabelPosition=bottom;verticalAlign=top',
 			'ExtShapeUserBlock': ss + 'aws3d.end_user;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#073763',
 			'ExtShapeWorkstationLCDBlock': ss + 'veeam.3d.workstation;verticalLabelPosition=bottom;verticalAlign=top',
+//Infographics
+			'InfographicsBlock': cs,
+//Other
+			'FlexiblePolygonBlock': cs,
+			'PersonRoleBlock' : cs
+	};
+	
+	function mapImgUrl(imgUrl)
+	{
+		if (imgUrl && LucidImporter.imgSrcRepl != null)
+		{
+			for (var i = 0; i < LucidImporter.imgSrcRepl.length; i++)
+			{
+				var repl = LucidImporter.imgSrcRepl[i];
+				imgUrl = imgUrl.replace(repl.searchVal, repl.replVal);
+			}
+		}
+	
+		return imgUrl;
+	};
+	
+	function mapFontFamily(fontFamily)
+	{
+		//We support a single font only since we can have one mapping only
+		gFontFamilyStyle = '';
+		
+		try
+		{
+			if (fontFamily)
+			{
+				var mappedFont = null;
+				
+				if (LucidImporter.advImpConfig && LucidImporter.advImpConfig.fontMapping)
+				{
+					mappedFont = LucidImporter.advImpConfig.fontMapping[fontFamily];
+				}
+				
+				if (mappedFont)
+				{
+					for (var key in mappedFont)
+					{
+						gFontFamilyStyle += key + '=' + mappedFont[key] + ';';
+					}
+					
+					return mappedFont['fontFamily']? 'font-family: ' + mappedFont['fontFamily'] : '';
+				}
+				else if (fontFamily != defaultLucidFont)
+				{
+					gFontFamilyStyle = 'fontFamily=' + fontFamily + ';';
+					return 'font-family: ' + fontFamily + ';';
+				}
+			}
+		}
+		catch(e) {}
+		
+		return '';
+	};
+	
+	function fix1Digit(num)
+	{
+		return  Math.round(num * 10) / 10;	
 	};
 	
 	// actual code start
@@ -3773,7 +3881,7 @@ LucidImporter = {};
 	function convertTxt2Html(txt, srcM, props)
 	{
 		var blockStyles = {'a': true, 'il': true, 'ir': true, 'mt': true, 'mb': true, 'p': true, 't': true, 'l': true};
-		var nonBlockStyles = {'lk': true, 's': true, 'c': true, 'b': true, 'fc': true, 'i': true, 'u': true, 'k': true};
+		var nonBlockStyles = {'lk': true, 's': true, 'c': true, 'b': true, 'fc': true, 'i': true, 'u': true, 'k': true, 'f': true, 'ac': true};
 
 		srcM.sort(function(a, b)
 		{
@@ -3784,6 +3892,12 @@ LucidImporter = {};
 		{ 
 			return nonBlockStyles[m.n];
 		});
+		
+		//To prevent losing begining of a label when first one is not at zero (links case) 
+		if (m[0] && m[0].s != 0)
+		{
+			m.unshift({s: 0, n: 'dummy', v: '', e: m[0].s});
+		}
 		
 		var globalStyles = srcM.filter(function(m)
 		{
@@ -3845,7 +3959,7 @@ LucidImporter = {};
 			var str = '';
 			var t = styles['t'];
 
-			var l = styles['l'] || {};
+			var l = styles['l'] || {v: t && t.v == 'ul'? 'auto' : 'decimal'};
 			
 			if (t != null && (listActive == false || listActive != t.v || listType != l.v))
 			{
@@ -3868,7 +3982,7 @@ LucidImporter = {};
 					openBlockTags.push('ol');
 				}
 				
-				str += 'style="margin: 0px; padding: 10px;list-style-position: inside; list-style-type:';
+				str += 'style="margin: 0px; padding-left: 10px;list-style-position: inside; list-style-type:';
 				
 				if (t.v == 'hl')
 				{
@@ -3921,21 +4035,62 @@ LucidImporter = {};
 			if (t != null)
 			{
 				str += '<li style="text-align:' + (styles['a']? styles['a'].v : (props.TextAlign || 'center')) + ';';
+				var color, fontSize;
 				
-				if (nonBlockStyles != null && nonBlockStyles['c'])
+				// Find font size/color
+				if (nonBlockStyles != null)
 				{
-					var v = nonBlockStyles['c'].v;
-					
-					if (v != null)
+					if (nonBlockStyles['c'])
 					{
-						if (v.charAt(0) != '#')
-						{
-							v = '#' + v;
-						}
-	
-						v = v.substring(0, 7);
-						str += 'color:' + v + ';';
+						color = nonBlockStyles['c'].v;
 					}
+					
+					if (nonBlockStyles['s'])
+					{
+						fontSize = nonBlockStyles['s'].v;
+					}
+				}
+					
+				try
+				{
+					var s = m[i], e = ends[j];
+					var it = i;
+					
+					if (s && e && s.s < e.e) //s can be null when all starts are used, e ends after s BUT sometimes there are errors in the file
+					{
+						var curS = s.s;
+		
+						while(s != null && s.s == curS)
+						{
+							if (s.n == 's')
+							{
+								fontSize = s.v;
+							}
+							else if (s.n == 'c')
+							{
+								color = s.v;
+							}
+							
+							s = m[++it];
+						}
+					}					
+				}
+				catch(e)
+				{
+					console.log(e);
+				}
+				
+				color = rgbToHex(color);
+				
+				if (color != null)
+				{
+					color = color.substring(0, 7);
+					str += 'color:' + color + ';';
+				}
+				
+				if (fontSize != null)
+				{
+					str += 'font-size:' + fix1Digit(fontSize * scale) + 'px;';
 				}
 				
 				str += '">';
@@ -3958,34 +4113,34 @@ LucidImporter = {};
 					jc = 'flex-end';
 				}
 				
-				str += 'display: flex; justify-content: ' + jc + '; text-align: ' + tmp + '; align-items: baseline; font-size: 0; line-height: 1;';
+				str += 'display: flex; justify-content: ' + jc + '; text-align: ' + tmp + '; align-items: baseline; font-size: 0; line-height: 1.25;';
 			}
 			
 			if (styles['il'])
 			{
-				str += 'margin-left: ' + Math.max(0, Math.round(styles['il'].v * scale - (listActive? 28 : 0))) + 'px;';
+				str += 'margin-left: ' + Math.max(0, fix1Digit(styles['il'].v * scale - (listActive? 28 : 0))) + 'px;';
 			}
 
 			if (styles['ir'])
 			{
-				str += 'margin-right: ' + Math.round(styles['ir'].v * scale) + 'px;';
+				str += 'margin-right: ' + fix1Digit(styles['ir'].v * scale) + 'px;';
 			}
 
 			if (styles['mt'])
 			{
-				str += 'margin-top: ' + Math.round(styles['mt'].v * scale) + 'px;';
+				str += 'margin-top: ' + fix1Digit(styles['mt'].v * scale) + 'px;';
 			}
 
 			if (styles['mb'])
 			{
-				str += 'margin-bottom: ' + Math.round(styles['mb'].v * scale) + 'px;';
+				str += 'margin-bottom: ' + fix1Digit(styles['mb'].v * scale) + 'px;';
 			}
 
-			str += '">';
+			str += 'margin-top: -2px;">';
 			
 			if (!listActive)
 			{
-				str += '<span>';
+				str += '<span>';// Is this needed?
 				openBlockTags.push('span');
 			}
 			
@@ -4004,9 +4159,9 @@ LucidImporter = {};
 			{
 				var lk = styles['lk'];
 				
-				if (lk.v != null && lk.v.length > 0 && lk.v[0].tp == 'ext')
+				if (lk.v != null && lk.v.length > 0)
 				{
-					str += '<a href="' + lk.v[0].url + '">';
+					str += '<a href="' + getLink(lk.v[0]) + '">';
 					openTags.push('a');
 					tagCount++;
 				}
@@ -4016,19 +4171,14 @@ LucidImporter = {};
 			openTags.push('span');
 			tagCount++;
 
-			str += 'font-size:' + (styles['s']? Math.floor(styles['s'].v * scale) : defaultFontSize) + 'px;';
+			str += 'font-size:' + (styles['s']? fix1Digit(styles['s'].v * scale) : defaultFontSize) + 'px;';
 
 			if (styles['c'])
 			{
-				var v = styles['c'].v;
+				var v = rgbToHex(styles['c'].v);
 				
 				if (v != null)
 				{
-					if (v.charAt(0) != '#')
-					{
-						v = '#' + v;
-					}
-
 					v = v.substring(0, 7);
 					str += 'color:' + v + ';';
 				}
@@ -4043,6 +4193,24 @@ LucidImporter = {};
 			{
 				str += 'font-style: italic;';
 			}
+			
+			if (styles['ac'] && styles['ac'].v)
+			{
+				str += 'text-transform: uppercase;';
+			}
+			
+			var fontFamily = null;
+			
+			if (styles['f'])
+			{
+				fontFamily = styles['f'].v;
+			}
+			else if (props.Font)
+			{
+				fontFamily = props.Font;
+			}
+			
+			str += mapFontFamily(fontFamily);
 			
 			var td = [];
 
@@ -4098,6 +4266,12 @@ LucidImporter = {};
 				str = str.trim();
 			}
 			
+			//If an endTag is called with no open tags, add a dummy startTag to have a font size
+			if (openTags.length == 0 && str.length > 0)
+			{
+				str = startTag({dummy: 1}) + str;
+			}
+			
 			str = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 			
 			do
@@ -4124,12 +4298,12 @@ LucidImporter = {};
 			if (k < globalStyles.length)
 			{
 				var bs = globalStyles[k], curBS = globalStyles[k].s;
-							
+
 				if (blockActive)
 				{
 					curBlockStyles = {};
-					html += endTag(txt, maxE, curS, true); //End any open tag
-					curS = maxE;
+					html += endTag(txt, curS, maxE, true); //End any open tag
+					curE = curS = maxE;
 					html += endBlockTag(); 
 				}
 		
@@ -4164,14 +4338,15 @@ LucidImporter = {};
 	
 				if (s && e && s.s < e.e) //s can be null when all starts are used, e ends after s BUT sometimes there are errors in the file
 				{
-					if (s.s > maxE) break;
+					if (s.s >= maxE) break;
 					curS = s.s;
 	
 					if (curS - curE > 0)
 					{
 						//NOTE: After the fix in end where we add dummy start and end, this shouldn't be called
 						//End any open tag and add remaining text with current style 
-						html += startTag(curStyles) + endTag(txt, curE, curS); 
+						html += startTag(curStyles) + endTag(txt, curE, curS);
+						curE = curS;
 					}
 					
 					while(s != null && s.s == curS)
@@ -4215,6 +4390,11 @@ LucidImporter = {};
 		
 		if (blockActive)
 		{
+			if (curE != maxE)
+			{
+				html += startTag({dummy: 1}) + endTag(txt, curE, maxE);
+			}
+			
 			html += endBlockTag(true); 
 		}
 					
@@ -4224,33 +4404,33 @@ LucidImporter = {};
 	function convertText(props, forceHTML)
 	{
 		isLastLblHTML = false;
-		var text = (props.Text != null) ? props.Text :
-			((props.Value != null) ? props.Value :
-			props.Lane_0);
+		var text = (props.Text != null && props.Text.t) ? props.Text :
+			((props.Value != null && props.Value.t) ? props.Value :
+			((props.Lane_0 != null && props.Lane_0.t) ? props.Lane_0 : null));
 		var text2 = null;
 		
 		if (text == null && props.State != null)
 		{
-			if (props.State.t != null)
+			if (props.State.t)
 			{
 				text = props.State;
 			}
 		}
 		else if (text == null && props.Note != null)
 		{
-			if (props.Note.t != null)
+			if (props.Note.t)
 			{
 				text = props.Note;
 			}
 		}
 		else if (text == null && props.Title != null)
 		{
-			if (props.Title.t != null)
+			if (props.Title.t)
 			{
 				text = props.Title;
 			}
 		}
-		else if (props.t != null)
+		else if (props.t)
 		{
 			text = props;
 		}
@@ -4261,7 +4441,7 @@ LucidImporter = {};
 			{
 				if (props.TextAreas.Text.Value != null)
 				{
-					if (props.TextAreas.Text.Value.t != null)
+					if (props.TextAreas.Text.Value.t)
 					{
 						text = props.TextAreas.Text.Value;
 					}
@@ -4270,7 +4450,7 @@ LucidImporter = {};
 		}
 		else if (text == null && props.t0 != null)
 		{
-			if (props.t0.t != null)
+			if (props.t0.t)
 			{
 				text = props.t0;
 			}
@@ -4291,7 +4471,7 @@ LucidImporter = {};
 				{
 					for (var i = 0; i < m.length; i++)
 					{
-						if (m[i].s > 0 || (m[i].e != null && m[i].e < txt.length) || m[i].n == 't')
+						if (m[i].s > 0 || (m[i].e != null && m[i].e < txt.length) || m[i].n == 't' || m[i].n == 'ac' || m[i].n == 'lk')
 						{
 							isLastLblHTML = true;
 							break;
@@ -4374,14 +4554,32 @@ LucidImporter = {};
 				return properties.Title.m;
 			}
 		}
+		else if (properties.State != null)
+		{
+			if (properties.State.m != null)
+			{
+				return properties.State.m;
+			}
+		}
+		else if (properties.Note != null)
+		{
+			if (properties.Note.m != null)
+			{
+				return properties.Note.m;
+			}
+		}
 		
 		return null;
 	}
 	
 	function getLabelStyle(properties, noLblStyle)
 	{
-		var style = 'whiteSpace=wrap;' + (noLblStyle? 'overflow=block;html=1;fontSize=' + defaultFontSize + ';' : 
+		var style = 'whiteSpace=wrap;' + (noLblStyle? 
+				'overflow=block;blockSpacing=1;html=1;fontSize=' + defaultFontSize + ';' +
+				gFontFamilyStyle
+				: 
 				getFontSize(properties) +
+				getFontFamily(properties) +
 				getFontColor(properties) + 
 				getFontStyle(properties) +
 				getTextAlignment(properties) + 
@@ -4393,7 +4591,8 @@ LucidImporter = {};
 				getTextGlobalSpacing(properties) +
 				getTextVerticalAlignment(properties) +
 				getTextGlobalAlignment(properties);
-		
+				
+		gFontFamilyStyle = '';
 		return style;  
 	}
 	
@@ -4407,10 +4606,12 @@ LucidImporter = {};
 		}
 		
 		s += 'whiteSpace=wrap;' + 
-		  (noLblStyle? (hasStyle(style, 'overflow')? '' : 'overflow=block;') + 
-			(hasStyle(style, 'html')? '' : 'html=1;') + 'fontSize=' + defaultFontSize + ';' 
+		  (noLblStyle? (hasStyle(style, 'overflow')? '' : 'overflow=block;blockSpacing=1;') + 
+			(hasStyle(style, 'html')? '' : 'html=1;') + 'fontSize=' + defaultFontSize + ';' +
+			gFontFamilyStyle
 			:
-			addStyle(mxConstants.STYLE_FONTSIZE, style, properties, action, cell) +		
+			addStyle(mxConstants.STYLE_FONTSIZE, style, properties, action, cell) +	
+			addStyle(mxConstants.STYLE_FONTFAMILY, style, properties, action, cell) +		
 			addStyle(mxConstants.STYLE_FONTCOLOR, style, properties, action, cell) +			
 			addStyle(mxConstants.STYLE_FONTSTYLE, style, properties, action, cell) +		
 			addStyle(mxConstants.STYLE_ALIGN, style, properties, action, cell) +		
@@ -4433,6 +4634,8 @@ LucidImporter = {};
 			addStyle(mxConstants.STYLE_DASHED, style, properties, action, cell) +			
 			addStyle(mxConstants.STYLE_STROKEWIDTH, style, properties, action, cell) +			
 			addStyle(mxConstants.STYLE_IMAGE, style, properties, action, cell);
+		
+		gFontFamilyStyle = '';
 		return s;
 	}
 	
@@ -4444,7 +4647,10 @@ LucidImporter = {};
 			{
 				case mxConstants.STYLE_FONTSIZE :
 					return getFontSize(properties);
-					
+				
+				case mxConstants.STYLE_FONTFAMILY :
+					return getFontFamily(properties);
+				
 				case mxConstants.STYLE_FONTCOLOR :
 					return getFontColor(properties);
 					
@@ -4537,7 +4743,7 @@ LucidImporter = {};
 					{
 						isV = true;
 						
-						return 'fontSize=' + Math.floor(currM.v * scale) + ';';
+						return 'fontSize=' + fix1Digit(currM.v * scale) + ';';
 					}
 				}
 				i++;
@@ -4551,25 +4757,57 @@ LucidImporter = {};
 		
 		return '';
 	}
-		
-	function getLink(m)
+	
+	function getFontFamily(properties)
 	{
+		var m = getTextM(properties);
+		var fontFamily;
+		
 		if (m != null)
 		{
 			for (var i = 0; i < m.length; i++)
 			{
-				if (m[i].n = 'lk' && m[i].v != null &&
-					m[i].v.length > 0 &&
-					m[i].v[0].tp == 'ext')
+				if (m[i].n == 'f' && m[i].v)
 				{
-					return m[i].v[0].url;
+					fontFamily = m[i].v;
+					break;
 				}
 			}
 		}
 		
-		return null;
-	}
-
+		if (!fontFamily && properties.Font)
+		{
+			fontFamily = properties.Font;
+		}
+		
+		mapFontFamily(fontFamily);
+		return gFontFamilyStyle;
+	};
+	
+	function getLink(lnk)
+	{
+		if (lnk.tp == 'ext')
+		{
+			return lnk.url;
+		}
+		else if (lnk.tp == 'ml')
+		{
+			return 'mailto:' + lnk.eml;
+		}
+		else if (lnk.tp == 'pg')
+		{
+			return 'data:page/id,' + (LucidImporter.pageIdsMap[lnk.id] || 0);
+		}
+		else if (lnk.tp == 'c') //Confluence content
+		{
+			return 'data:confluence/id,' + lnk.ccid;
+		}
+		else
+		{
+			return null;	
+		}
+	};
+	
 	function getFontColor(properties)
 	{
 		//adds font color
@@ -4590,14 +4828,7 @@ LucidImporter = {};
 					{
 						isC = true;
 						
-						var currV = currM.v;
-						
-						if (currV.charAt(0) != '#')
-						{
-							currV = '#' + currV;
-						}
-
-						var currV = currV.substring(0, 7);
+						var currV = rgbToHex(currM.v).substring(0, 7);
 
 						return mxConstants.STYLE_FONTCOLOR + '=' + currV + ';';
 					}
@@ -4751,18 +4982,18 @@ LucidImporter = {};
 				{
 					if (currM.n == 'il')
 					{
-						return 'spacingLeft=' + currM.v * 0.6 + ';';
+						return 'spacingLeft=' + fix1Digit(currM.v * scale) + ';';
 					}
-					else
+					/*else
 					{
 						var align = getTextAlignment(properties);
 					
 						if (currM.n == 's' && align != 'align=center;' && align != '')
 						{
 							// TODO: Fix condition to apply this only when necessary
-							//return 'spacingLeft=' + currM.v * 0.6 + ';';
+							//return 'spacingLeft=' + currM.v * scale + ';';
 						}
-					}
+					}*/
 				}
 					
 				i++;
@@ -4792,7 +5023,7 @@ LucidImporter = {};
 					{
 						isIR = true;
 						
-						return 'spacingRight=' + currM.v + ';';
+						return 'spacingRight=' + fix1Digit(currM.v * scale) + ';';
 					}
 				}
 				
@@ -4822,7 +5053,7 @@ LucidImporter = {};
 					if (currM.v != null)
 					{
 						isMT = true;
-						return 'spacingTop=' + currM.v + ';';
+						return 'spacingTop=' + fix1Digit(currM.v * scale) + ';';
 					}
 				}
 				
@@ -4852,7 +5083,7 @@ LucidImporter = {};
 					if (currM.v != null)
 					{
 						isMB = true;
-						return 'spacingBottom=' + currM.v + ';';
+						return 'spacingBottom=' + fix1Digit(currM.v * scale) + ';';
 					}
 				}
 				
@@ -4868,7 +5099,7 @@ LucidImporter = {};
 		//adds global spacing
 		if (typeof properties.InsetMargin === 'number')
 		{
-				return 'spacing=' + Math.max(0, Math.round(parseInt(properties.InsetMargin) * scale)) + ';';
+			return 'spacing=' + Math.max(0, fix1Digit((properties.InsetMargin) * scale)) + ';';
 		}
 	
 		return '';
@@ -4908,8 +5139,6 @@ LucidImporter = {};
 		{
 			return createStyle(mxConstants.STYLE_STROKECOLOR, getColor(properties.LineColor), '#000000');
 		}
-		
-		return '';
 	}
 
 	function getHeaderColor(color)
@@ -4938,6 +5167,8 @@ LucidImporter = {};
 
 		if (typeof properties.LineColor === 'string')
 		{
+			properties.LineColor = rgbToHex(properties.LineColor);
+			
 			if (properties.LineColor.length > 7)
 			{
 				var sOpac = "0x" + properties.LineColor.substring(properties.LineColor.length - 2, properties.LineColor.length);
@@ -4951,6 +5182,8 @@ LucidImporter = {};
 		
 		if (typeof properties.FillColor === 'string')
 		{
+			properties.FillColor = rgbToHex(properties.FillColor);
+			
 			if (properties.FillColor.length > 7)
 			{
 				var fOpac = "0x" + properties.FillColor.substring(properties.FillColor.length - 2, properties.FillColor.length);
@@ -4974,7 +5207,7 @@ LucidImporter = {};
 			{
 				if (properties.Rounding > 0)
 				{
-					return 'rounded=1;absoluteArcSize=1;arcSize=' + Math.round(properties.Rounding * 0.6) + ';';
+					return 'rounded=1;absoluteArcSize=1;arcSize=' + fix1Digit(properties.Rounding * scale) + ';';
 				}
 			}
 //			else if (properties.Rounding == null)
@@ -4999,7 +5232,7 @@ LucidImporter = {};
 			
 			// Fixes the case for horizontal swimlanes where we use horizontal=0
 			// and Lucid uses rotation
-			if (deg != 0 && ((action.Class == 'UMLSwimLaneBlockV2') || ((action.Class.indexOf('Rotated') >= 0 || deg == -90 || deg == 270) && (action.Class.indexOf('Pool') >= 0 || action.Class.indexOf('SwimLane') >= 0))))
+			if (deg != 0 && action.Class && ((action.Class == 'UMLSwimLaneBlockV2') || ((action.Class.indexOf('Rotated') >= 0 || deg == -90 || deg == 270) && (action.Class.indexOf('Pool') >= 0 || action.Class.indexOf('SwimLane') >= 0))))
 			{
 				deg += 90;
 				cell.geometry.rotate90();
@@ -5061,20 +5294,49 @@ LucidImporter = {};
 		return '';
 	}
 
-	function getColor(color)
+	function rgbToHex(color)
 	{
-		var clr = color? color.substring(0, 7) : null;
-		
-		if (clr && clr.charAt(0) != '#' && clr.charAt(0).toLowerCase() != 'r')
+		if (color)
 		{
-			clr = '#' + clr;
+			if (typeof color === 'object')
+			{
+				try
+				{
+					color = color.cs[0].c; //TODO support gradient colors 
+				}
+				catch(e)
+				{
+					console.log(e);
+					color = '#ffffff';
+				}
+			}
+			
+			if (color.substring(0, 3) == 'rgb')
+			{
+				color = '#' + color.match(/\d+/g).map(function(n)
+				{
+					var s = parseInt(n).toString(16);
+					return (s.length == 1? '0' : '') + s;
+				}).join('');
+			}
+			else if (color.charAt(0) != '#')
+			{
+				color = '#' + color;
+			}
 		}
 		
-		return clr;
+		return color;
+	};
+	
+	function getColor(color)
+	{
+		color = rgbToHex(color);
+		return color? color.substring(0, 7) : null;
 	}
 	
 	function getOpacity2(color, style)
 	{
+		color = rgbToHex(color);
 		return color && color.length > 7? (style + '=' + Math.round(parseInt('0x' + color.substr(7)) / 2.55) + ';') : '';
 	}
 	
@@ -5108,44 +5370,44 @@ LucidImporter = {};
 		// Stroke style
 		if (properties.StrokeStyle == 'dotted')
 		{
-			return 'dashed=1;dashPattern=1 4;';
+			return 'dashed=1;fixDash=1;dashPattern=1 4;';
 		}
 		else if (properties.StrokeStyle == 'dashdot')
 		{
-			return 'dashed=1;dashPattern=10 5 1 5;';
+			return 'dashed=1;fixDash=1;dashPattern=10 5 1 5;';
 		}
 		else if (properties.StrokeStyle == 'dashdotdot')
 		{
-			return 'dashed=1;dashPattern=10 5 1 5 1 5;';
+			return 'dashed=1;fixDash=1;dashPattern=10 5 1 5 1 5;';
 		}
 		else if (properties.StrokeStyle == 'dotdotdot')
 		{
-			return 'dashed=1;dashPattern=1 2;';
+			return 'dashed=1;fixDash=1;dashPattern=1 2;';
 		}
 		else if (properties.StrokeStyle == 'longdash')
 		{
-			return 'dashed=1;dashPattern=16 6;';
+			return 'dashed=1;fixDash=1;dashPattern=16 6;';
 		}
 		else if (properties.StrokeStyle == 'dashlongdash')
 		{
-			return 'dashed=1;dashPattern=10 6 16 6;';
+			return 'dashed=1;fixDash=1;dashPattern=10 6 16 6;';
 		}
 		else if (properties.StrokeStyle == 'dashed24')
 		{
-			return 'dashed=1;dashPattern=3 8;';
+			return 'dashed=1;fixDash=1;dashPattern=3 8;';
 		}
 		else if (properties.StrokeStyle == 'dashed32')
 		{
-			return 'dashed=1;dashPattern=6 5;';
+			return 'dashed=1;fixDash=1;dashPattern=6 5;';
 		}
 		else if (properties.StrokeStyle == 'dashed44')
 		{
-			return 'dashed=1;dashPattern=8 8;';
+			return 'dashed=1;fixDash=1;dashPattern=8 8;';
 		}
 		else if (properties.StrokeStyle != null && properties.
 			StrokeStyle.substring(0, 6) == 'dashed')
 		{
-			return 'dashed=1;';
+			return 'dashed=1;fixDash=1;';
 		} 
 		
 		return '';
@@ -5153,15 +5415,38 @@ LucidImporter = {};
 	
 	function getStrokeWidth(properties)
 	{
-		return properties.LineWidth != null? createStyle(mxConstants.STYLE_STROKEWIDTH, Math.round(parseFloat(properties.LineWidth) * scale), '1') : '';
+		return properties.LineWidth != null? createStyle(mxConstants.STYLE_STROKEWIDTH, fix1Digit(parseFloat(properties.LineWidth) * scale), '1') : '';
 	}
 	
 	function getImage(properties, action, url)
 	{
-		var imgUrl = url;
+		var imgUrl = url, extraStyles = '';
 		
 		// Converts images
-		if (action.Class == 'ImageSearchBlock2')
+		if (properties.FillColor && properties.FillColor.url)
+		{
+			imgUrl = properties.FillColor.url;
+			//Check if image is cropped, stretched, ...
+			if (properties.FillColor.pos == 'fill')
+			{
+				extraStyles = 'imageAspect=0;';
+			} 
+			//TODO Support non-destructive cropping
+			/*else if (typeof properties.FillColor.pos == 'object')
+			{
+				"pos": {
+		            "pin": {
+		                "x": 0.5765582655826557,
+		                "y": 0.6180376215526864
+		            },
+		            "size": {
+		                "w": 0.7764227642276422,
+		                "h": 1.5284871672246134
+		            }
+            	}
+			}*/
+		}
+		else if (action.Class == 'ImageSearchBlock2')
 		{
 			imgUrl = properties.URL;
 		}
@@ -5170,23 +5455,10 @@ LucidImporter = {};
 		{
 			imgUrl = properties.ImageFillProps.url;
 		}
-		else if (properties.FillColor && properties.FillColor.url)
-		{
-			imgUrl = properties.FillColor.url;
-		}
 					
 		if (imgUrl != null)
 		{
-			if (LucidImporter.imgSrcRepl != null)
-			{
-				for (var i = 0; i < LucidImporter.imgSrcRepl.length; i++)
-				{
-					var repl = LucidImporter.imgSrcRepl[i];
-					imgUrl = imgUrl.replace(repl.searchVal, repl.replVal);
-				}
-			}
-			
-			return 'image=' + imgUrl + ';';
+			return 'image=' + mapImgUrl(imgUrl) + ';' + extraStyles;
 		}
 		
 		return '';
@@ -5195,18 +5467,9 @@ LucidImporter = {};
 	// Adds metadata, link, converts placeholders
 	function addCustomData(cell, p, graph)
 	{
-		if (p.Link != null && p.Link.length > 0 && p.Link[0].tp == 'ext')
+		if (p.Link != null && p.Link.length > 0)
 		{
-			graph.setAttributeForCell(cell, 'link', p.Link[0].url);
-		}
-		else if (p.Text != null)
-		{
-			var link = getLink(getTextM(p.Text));
-			
-			if (link != null)
-			{
-				graph.setAttributeForCell(cell, 'link', link);
-			}
+			graph.setAttributeForCell(cell, 'link', getLink(p.Link[0]));
 		}
 		
 		replacePlaceholders(cell, graph);
@@ -5351,7 +5614,7 @@ LucidImporter = {};
 				
 				addCustomData(cell, p, graph);
 				
-				if (p.Title && p.Text && a.Class.substr(0, 8) != 'ExtShape')
+				if (p.Title && p.Title.t && p.Text && p.Text.t && a.Class.substr(0, 8) != 'ExtShape')
 				{
 					var geo = cell.geometry;
 					var title = new mxCell(convertText(p.Title), new mxGeometry(0, geo.height,geo.width, 10), 'strokeColor=none;fillColor=none;');
@@ -5371,6 +5634,7 @@ LucidImporter = {};
 					{
 						cell.style += 'rounded=0;';
 					}
+					var isCurved = false;
 					
 					if (p.Shape != 'diagonal')
 					{
@@ -5396,6 +5660,7 @@ LucidImporter = {};
 							if (p.Shape == 'curve')
 							{
 								cell.style += 'curved=1;';
+								isCurved = true;
 							}
 						}
 					}
@@ -5407,9 +5672,12 @@ LucidImporter = {};
 
 					if (p.Endpoint1.Style != null)
 					{
-						if (edgeStyleMap[p.Endpoint1.Style] != null)
+						var startStyle = edgeStyleMap[p.Endpoint1.Style];
+						
+						if (startStyle != null)
 						{
-							cell.style += 'startArrow=' + edgeStyleMap[p.Endpoint1.Style] + ';';
+							startStyle = startStyle.replace(/xyz/g, 'start');
+							cell.style += 'startArrow=' + startStyle + ';';
 						}
 						else
 						{
@@ -5424,9 +5692,12 @@ LucidImporter = {};
 					
 					if (p.Endpoint2.Style != null)
 					{
-						if (edgeStyleMap[p.Endpoint2.Style] != null)
+						var endStyle = edgeStyleMap[p.Endpoint2.Style];
+						
+						if (endStyle != null)
 						{
-							cell.style += 'endArrow=' + edgeStyleMap[p.Endpoint2.Style].replace(/startSize/g, 'endSize') + ';';
+							endStyle = endStyle.replace(/xyz/g, 'end');
+							cell.style += 'endArrow=' + endStyle + ';';
 						}
 						else
 						{
@@ -5440,7 +5711,7 @@ LucidImporter = {};
 					}
 
 					var waypoints = p.ElbowControlPoints != null && p.ElbowControlPoints.length > 0? p.ElbowControlPoints : 
-						(p.BezierJoints != null && p.BezierJoints.length > 0? p.BezierJoints : p.Joints);
+						(isCurved && p.BezierJoints != null && p.BezierJoints.length > 0? p.BezierJoints : p.Joints);
 					
 					if (waypoints != null)
 					{
@@ -5483,9 +5754,9 @@ LucidImporter = {};
 					// Anchor points and arrows					
 					var p1, p2;
 					
-					if (source == null || !source.geometry.isRotated) //TODO Rotate the endpoint instead of ignoring it (The same for flipped shapes)
+					if (source == null || !source.geometry.isRotated) //TODO Rotate the endpoint instead of ignoring it
 					{
-						p1 = updateEndpoint(cell, p.Endpoint1, true, implicitY);
+						p1 = updateEndpoint(cell, p.Endpoint1, true, implicitY, null, source);
 					}
 					
 					if (source != null && p1 != null)
@@ -5499,9 +5770,9 @@ LucidImporter = {};
 						LucidImporter.stylePointsSet.add(source);
 					}
 					
-					if (target == null || !target.geometry.isRotated) //TODO Rotate the endpoint instead of ignoring it (The same for flipped shapes)
+					if (target == null || !target.geometry.isRotated) //TODO Rotate the endpoint instead of ignoring it
 					{
-						p2 = updateEndpoint(cell, p.Endpoint2, false, implicitY);
+						p2 = updateEndpoint(cell, p.Endpoint2, false, implicitY, null, target);
 					}
 					
 					if (target != null && p2 != null)
@@ -5559,7 +5830,12 @@ LucidImporter = {};
     	}
 	    
 	    handleTextRotation(v, p);
-	    
+
+	    if (p.Hidden)
+		{
+			v.visible = false;
+		}
+		
 	    return v;
 	};
 	
@@ -5579,22 +5855,27 @@ LucidImporter = {};
 		{
 			var count = 0;
 			
-			while (ta['t' + count] != null)
+			while (ta['t' + count] !== undefined) //Some files has null for some labels 
 			{
 				var tmp = ta['t' + count];
-				e = insertLabel(tmp, e);
+				
+				if (tmp != null)
+				{
+					e = insertLabel(tmp, e, obj, source, target);
+				}
+				
 				count++;
 			}
 			
 			count = 0;
 			
-			while (ta['m' + count] != null || count < 1)
+			while (ta['m' + count] !== undefined || count < 1)
 			{
 				var tmp = ta['m' + count];
 				
 				if (tmp != null)
 				{
-					e = insertLabel(tmp, e, obj);
+					e = insertLabel(tmp, e, obj, source, target);
 				}
 				
 				count++;
@@ -5602,21 +5883,26 @@ LucidImporter = {};
 
 			if (ta.Text != null)
 			{
-				e = insertLabel(ta.Text, e, obj);
+				e = insertLabel(ta.Text, e, obj, source, target);
 			}
 
 			var ta = (p != null) ? p.TextAreas : obj.TextAreas;
 			
 			if (ta.Message != null)
 			{
-				e = insertLabel(ta.Message, e, obj);
+				e = insertLabel(ta.Message, e, obj, source, target);
 			}
+		}
+		
+		if (obj.Hidden)
+		{
+			e.visible = false;
 		}
 		
 		return e;
 	}
 
-	function insertLabel(textArea, e, obj)
+	function insertLabel(textArea, e, obj, src, trg)
 	{
 		var x = (parseFloat(textArea.Location) - 0.5) * 2;
 		
@@ -5625,17 +5911,67 @@ LucidImporter = {};
 			x = (parseFloat(textArea.Text.Location) - 0.5) * 2;
 		}
 		
-		var lab = new mxCell(convertText(textArea), new mxGeometry((!isNaN(x)) ? x : 0, 0, 0, 0),
-			labelStyle + getEdgeLabelStyle(textArea));
+		var lblTxt = convertText(textArea);
+		var lab = new mxCell(lblTxt, new mxGeometry((!isNaN(x)) ? x : 0, 0, 0, 0),
+			labelStyle + getEdgeLabelStyle(textArea, obj, isLastLblHTML));
 		lab.geometry.relative = true;
 		lab.vertex = true;
+		
+		if (textArea.Side)
+		{
+			try
+			{
+				if (obj.Action && obj.Action.Properties)
+				{
+					obj = obj.Action.Properties;
+				}
+				
+				var dx, dy;
+
+				//Sometimes x, y info in the Endpoint is incorrect when the edge is connected!
+				if (src != null && trg != null)
+				{
+					var srcGeo = src.geometry, trgGeo = trg.geometry;
+					dx = Math.abs((srcGeo.x + srcGeo.width * obj.Endpoint1.LinkX) - 
+									(trgGeo.x + trgGeo.width * obj.Endpoint2.LinkX));
+					dy = Math.abs((srcGeo.y + srcGeo.height * obj.Endpoint1.LinkY) - 
+									(trgGeo.y + trgGeo.height * obj.Endpoint2.LinkY));
+				}
+				else
+				{
+					dx = Math.abs(obj.Endpoint1.x - obj.Endpoint2.x);
+					dy = Math.abs(obj.Endpoint1.y - obj.Endpoint2.y);
+				}
+				
+				var strSize = mxUtils.getSizeForString(lblTxt);
+				
+				if (dx == 0 || dx < dy)
+				{
+					lab.geometry.offset = new mxPoint(-textArea.Side * (strSize.width / 2 + 5 + dx), 0);
+				}
+				else
+				{
+					lab.geometry.offset = new mxPoint(0, Math.sign(obj.Endpoint2.x - obj.Endpoint1.x) * textArea.Side * (strSize.height / 2 + 5 + dy));
+				}
+			}
+			catch(e)
+			{
+				console.log(e);
+			}
+		} 
+		
 		e.insert(lab);
 		
 		return e;
 	};
 	
-	function getEdgeLabelStyle(obj)
+	function getEdgeLabelStyle(obj, pObj, noLblStyle)
 	{
+		if (noLblStyle)
+		{
+			return gFontFamilyStyle;
+		}
+		
 		var size = defaultFontSize;
 		var style = '';
 		
@@ -5647,25 +5983,23 @@ LucidImporter = {};
 			{
 				if (obj.Value.m[i].n == 's')
 				{
-					size = scale * parseFloat(obj.Value.m[i].v);
+					size = fix1Digit(scale * parseFloat(obj.Value.m[i].v));
 				}
 				else if (obj.Value.m[i].n == 'c')
 				{
-					var v = obj.Value.m[i].v;
+					var v = rgbToHex(obj.Value.m[i].v);
 					
 					if (v != null)
 					{
-						if (v.charAt(0) != '#')
-						{
-							v = '#' + v;
-						}
-
 						v = v.substring(0, 7);
 					}
 					
 					style += 'fontColor=' + v + ';'
 				}
 			}
+			
+			style += getFontFamily(pObj);
+			gFontFamilyStyle = '';
 		}
 		
 		return style + ';fontSize=' + size + ';';
@@ -5686,7 +6020,7 @@ LucidImporter = {};
 		return '';
 	};
 
-	function updateEndpoint(cell, endpoint, source, ignoreX, ignoreY)
+	function updateEndpoint(cell, endpoint, source, ignoreX, ignoreY, endCell)
 	{
 		if (endpoint != null)
 		{
@@ -5694,6 +6028,17 @@ LucidImporter = {};
 			{
 				endpoint.LinkX = Math.round(endpoint.LinkX * 1000) / 1000;
 				endpoint.LinkY = Math.round(endpoint.LinkY * 1000) / 1000;
+				
+				if (endCell != null && endCell.style && endCell.style.indexOf('flipH=1') > -1)
+				{
+					endpoint.LinkX = 1 - endpoint.LinkX;
+				}
+
+				if (endCell != null && endCell.style && endCell.style.indexOf('flipV=1') > -1)
+				{
+					endpoint.LinkY = 1 - endpoint.LinkY;
+				}
+				
 				cell.style += ((!ignoreX) ? ((source) ? 'exitX' : 'entryX') + '=' + endpoint.LinkX + ';' : '') +
 					((!ignoreY) ? (((source) ? 'exitY' : 'entryY') + '=' + endpoint.LinkY + ';') : '') +
 					((source) ? 'exitPerimeter' : 'entryPerimeter') + '=0;'; //perimeter as 0 works with both cases better
@@ -5707,7 +6052,7 @@ LucidImporter = {};
 		}
 	};
 
-	function createGroup(obj, lookup, edgesGroups)
+	function createGroup(obj, lookup, edgesGroups, blocksMap)
 	{
 		try
 		{
@@ -5718,6 +6063,9 @@ LucidImporter = {};
 			
 			var group = new mxCell('', new mxGeometry(), 'group;dropTarget=0;');
 			group.vertex = true;
+			//Store z-order to use it in groups
+			group.zOrder = obj.ZOrder;
+
 			var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 			var members = obj.Members, memberCells = [];
 			
@@ -5729,8 +6077,9 @@ LucidImporter = {};
 				{
 					memberCells.push(v);
 				}
-				else
+				else if (blocksMap[key] != null)
 				{
+					memberCells.push(blocksMap[key]);
 					//Edges are not yet created, so, create a map for them
 					edgesGroups[key] = group;
 				}
@@ -5741,18 +6090,53 @@ LucidImporter = {};
 				var ai = a.zOrder;
 				var bi = b.zOrder;
 				
-				return (ai != null && bi != null) ? ai - bi : 0;
+				return (ai != null && bi != null) ? (ai > bi? 1 : (ai < bi? -1 : 0)) : 0; //ZOrder can be negative
 			});
+			
+			function updateMinMax(e, scaleIt)
+			{
+				if (e != null)
+				{
+					if (Array.isArray(e))
+					{
+						for (var i = 0; i < e.length; i++) 
+                        {
+                        	updateMinMax(e[i].p? e[i].p : e[i], scaleIt);
+                        }
+					}
+					else
+					{
+						var s = scaleIt? scale : 1;
+						minX = Math.min(minX, e.x * s);
+						minY = Math.min(minY, e.y * s);
+						maxX = Math.max(maxX, (e.x + (e.width? e.width : 0)) * s);
+						maxY = Math.max(maxY, (e.y + (e.height? e.height : 0)) * s);
+					}
+				}
+			};
+			
+			var index = 0;
 			
 			for (var i = 0; i < memberCells.length; i++)
 			{
 				var v = memberCells[i];
-				minX = Math.min(minX, v.geometry.x);
-				minY = Math.min(minY, v.geometry.y);
-				maxX = Math.max(maxX, v.geometry.x + v.geometry.width);
-				maxY = Math.max(maxY, v.geometry.y + v.geometry.height);
-				v.parent = group;
-				group.insert(v, i);
+				
+				if (v.vertex)
+				{
+					updateMinMax(v.geometry);
+					v.parent = group;
+					group.insert(v, index++);
+				}
+				else
+				{
+					var vProp = v.Action != null && v.Action.Properties? v.Action.Properties : v; 
+					updateMinMax(vProp.Endpoint1, true);
+					updateMinMax(vProp.Endpoint2, true);
+					updateMinMax(vProp.ElbowPoints, true);
+					updateMinMax(vProp.ElbowControlPoints, true);
+					updateMinMax(vProp.BezierJoints, true);
+					updateMinMax(vProp.Joints, true);
+				}
 			}
 			
 			group.geometry.x = minX;
@@ -5793,6 +6177,7 @@ LucidImporter = {};
 	
 	function importLucidPage(graph, g, noSelection)
 	{
+		LucidImporter.hasMath = false;
 		LucidImporter.stylePointsSet = new Set();
 		
 		graph.getModel().beginUpdate();
@@ -5801,11 +6186,19 @@ LucidImporter = {};
 			var select = [];
 			var lookup = {};
 			var edgesGroups = {};
+			var blocksMap = {};
 			var queue = [];
 
+			if (g.Lines != null)
+			{
+				blocksMap = g.Lines;
+			}
+			
 			// Vertices first (populates lookup table for connecting edges)
 			if (g.Blocks != null)
 			{
+				Object.assign(blocksMap, g.Blocks);
+				
 				for (var key in g.Blocks)
 				{
 					var obj = g.Blocks[key];
@@ -5834,12 +6227,14 @@ LucidImporter = {};
 				{
 					for (var key in g.Generators)
 					{
-						//TODO We don't support any generators currently, so probably we should mark any generator as unknow shape
 						if (g.Generators[key].ClassName == 'OrgChart2018')
 						{
 							LucidImporter.hasUnknownShapes = true;
-							console.log('Lucid diagram has an Org Chart!');
-							//createOrgChart(obj, graph, lookup, queue);
+							createOrgChart(key, g.Generators[key], g.Data, graph, lookup);
+						}
+						else
+						{
+							LucidImporter.hasUnknownShapes = true;
 						}
 					}
 				}
@@ -5849,6 +6244,7 @@ LucidImporter = {};
 				for (var i = 0; i < g.Objects.length; i++)
 				{
 					var obj = g.Objects[i];
+					blocksMap[obj.id] = obj;
 					
 					if (obj.Action != null && styleMap[obj.Action.Class] == 'mxCompositeShape')
 					{
@@ -5863,8 +6259,11 @@ LucidImporter = {};
 						if (obj.GeneratorData.p.ClassName == 'OrgChart2018')
 						{
 							LucidImporter.hasUnknownShapes = true;
-							console.log('Lucid diagram has an Org Chart!');
-							//createOrgChart(obj, graph, lookup, queue);
+							createOrgChart(obj.GeneratorData.id, obj.GeneratorData.p, obj.GeneratorData.gs, graph, lookup);
+						}
+						else
+						{
+							LucidImporter.hasUnknownShapes = true;
 						}
 					}
 					
@@ -5878,7 +6277,7 @@ LucidImporter = {};
 					
 					if (obj.IsGroup)
 					{
-						var group = createGroup(obj, lookup, edgesGroups);
+						var group = createGroup(obj, lookup, edgesGroups, blocksMap);
 						
 						if (group)
 						{
@@ -5899,7 +6298,7 @@ LucidImporter = {};
 						var obj = g.Groups[key];
 						obj.id = key;
 
-						var group = createGroup(obj, lookup, edgesGroups);
+						var group = createGroup(obj, lookup, edgesGroups, blocksMap);
 						
 						if (group)
 						{
@@ -5934,7 +6333,7 @@ LucidImporter = {};
 				var ai = (a.Properties != null) ? a.Properties.ZOrder : a.ZOrder;
 				var bi = (b.Properties != null) ? b.Properties.ZOrder : b.ZOrder;
 				
-				return (ai != null && bi != null) ? ai - bi : 0;
+				return (ai != null && bi != null) ? (ai > bi? 1 : (ai < bi? -1 : 0)) : 0; //ZOrder can be negative
 			});
 			
 			function addLine(obj, p)
@@ -5942,6 +6341,12 @@ LucidImporter = {};
 				var src = (p.Endpoint1.Block != null) ? lookup[p.Endpoint1.Block] : null;
 				var trg = (p.Endpoint2.Block != null) ? lookup[p.Endpoint2.Block] : null;
 				var e = createEdge(obj, graph, src, trg);
+
+				if ((p.Endpoint1 && p.Endpoint1.Line) || (p.Endpoint2 && p.Endpoint2.Line))
+				{
+					console.log('Edge to Edge case');
+					LucidImporter.hasUnknownShapes = true;
+				}
 				
 				if (src == null && p.Endpoint1 != null)
 				{
@@ -5957,29 +6362,37 @@ LucidImporter = {};
 				
 				var group = edgesGroups[obj.id];
 				
-				function fixPoint(p, pgeo)
+				function fixPoint(p, px, py)
 				{
 					if (p != null && !p.generated)
 					{
-						p.x -= pgeo.x;
-						p.y -= pgeo.y;
+						p.x -= px;
+						p.y -= py;
 					}
 				};
 				
 				if (group != null)
 				{
 					//Correct edge geometry
-					var geo = e.geometry, pgeo = group.geometry;
-					fixPoint(geo.sourcePoint, pgeo);
-					fixPoint(geo.targetPoint, pgeo);
-					fixPoint(geo.offset, pgeo);
+					var geo = e.geometry, px = 0, py = 0, prnt = group;
+					
+					while (prnt != null && prnt.geometry != null)
+					{
+						px += prnt.geometry.x;
+						py += prnt.geometry.y;
+						prnt = prnt.parent;
+					}
+					
+					fixPoint(geo.sourcePoint, px, py);
+					fixPoint(geo.targetPoint, px, py);
+					fixPoint(geo.offset, px, py);
                     var points = geo.points;
                     
                     if (points != null) 
                     {
                         for (var i = 0; i < points.length; i++) 
                         {
-                        	fixPoint(points[i], pgeo);
+                        	fixPoint(points[i], px, py);
                         }
                     }
 				}
@@ -6035,6 +6448,18 @@ LucidImporter = {};
 				v.style = 'points=[' + v.stylePoints.join(',') + '];' + v.style;
 				delete v.stylePoints;
 			});
+			
+			//Cleanup added properties
+			try
+			{
+				var allCells = graph.getModel().cells;
+				
+				for (var id in allCells)
+				{
+					var c = allCells[id];
+					delete c.zOrder;
+				}
+			} catch(e){}
 			
 			if (!noSelection)
 				graph.setSelectionCells(select);
@@ -6216,13 +6641,25 @@ LucidImporter = {};
 		}	
 	};
 	
-	LucidImporter.importState = function(state, imgSrcRepl)
+	LucidImporter.importState = function(state, imgSrcRepl, advImpConfig)
 	{
 		LucidImporter.stencilsMap = {}; //Reset stencils cache
 		LucidImporter.imgSrcRepl = imgSrcRepl; //Use LucidImporter object to store the map since it is used deep inside
+		LucidImporter.advImpConfig = advImpConfig;
 		LucidImporter.globalProps = {};
+		LucidImporter.pageIdsMap = {};
 		LucidImporter.hasUnknownShapes = false;
-		var xml = ['<?xml version=\"1.0\" encoding=\"UTF-8\"?>', '<mxfile>'];
+		LucidImporter.hasOrgChart = false;
+		LucidImporter.hasTimeLine = false;
+		var xml = ['<?xml version=\"1.0\" encoding=\"UTF-8\"?>', '<mxfile type="Lucidchart-Import" version="' +
+			EditorUi.VERSION + '" host="' + mxUtils.htmlEntities(window.location.hostname) + 
+			'" agent="' + mxUtils.htmlEntities(navigator.appVersion) + 
+			'" modified="' + mxUtils.htmlEntities(new Date().toISOString()) + '">'];
+
+		if (advImpConfig && advImpConfig.transparentEdgeLabels)
+		{
+			labelStyle = labelStyle.replace('labelBackgroundColor=#ffffff;', 'labelBackgroundColor=none;');
+		}
 		
 		// Extracts and sorts all pages
 		var pages = [];
@@ -6245,7 +6682,10 @@ LucidImporter = {};
 			
 			for (var id in obj.Pages)
 			{
-				pages.push(obj.Pages[id]);
+				var pg = obj.Pages[id];
+				pg.id = id;
+				pg.Data = obj.Data;
+				pages.push(pg);
 			}
 			
 			pages.sort(function(a, b)
@@ -6263,6 +6703,11 @@ LucidImporter = {};
 			    	return 0;
 			    }
 			});
+			
+			for (var i = 0; i < pages.length; i++)
+			{
+				LucidImporter.pageIdsMap[pages[i].id] = i;
+			}
 		};
 		
 		if (state.state != null && urlParams['dev'] == '1' && window.console != null)
@@ -6298,6 +6743,37 @@ LucidImporter = {};
             xml.push(' id="' + i + '"'); //Add page ids in case it is needed in aspects
 			importLucidPage(graph, pages[i], true);
             var node = codec.encode(graph.getModel());
+ 			
+			if (pages[i].Properties != null)
+            {
+				if (pages[i].Properties.FillColor)
+				{
+            		node.setAttribute('background', getColor(pages[i].Properties.FillColor));
+				}
+				
+				if (pages[i].Properties.InfiniteCanvas)
+				{
+					node.setAttribute('page', 0);
+				}
+				else if (pages[i].Properties.Size != null)
+				{
+					node.setAttribute('page', 1);
+					node.setAttribute('pageWidth', pages[i].Properties.Size.w * scale);
+					node.setAttribute('pageHeight', pages[i].Properties.Size.h * scale);
+				}
+				
+				if (pages[i].Properties.GridSpacing != null)
+				{
+					node.setAttribute('grid', 1);
+					node.setAttribute('gridSize', pages[i].Properties.GridSpacing * scale);
+				}
+            }
+			
+			if (LucidImporter.hasMath)
+			{
+				node.setAttribute('math', 1);
+			}
+
             graph.getModel().clear();
 
             xml.push('>' + Graph.compress(mxUtils.getXml(node)) + '</diagram>');
@@ -6385,6 +6861,32 @@ LucidImporter = {};
     	v.insert(icon1);
 	};
 	
+	function addGCP2ExpandedProductCard(icon, scaleX, scaleY, w, h, v, p, a)
+	{
+		if (icon != 'transparent')
+		{
+			var s = mxConstants.STYLE_SHAPE + '=mxgraph.gcp.';
+		}
+		else
+		{
+			var s = mxConstants.STYLE_SHAPE + '=';
+		}
+
+		v.style = 'rounded=1;absoluteArcSize=1;arcSize=2;verticalAlign=bottom;fillColor=#ffffff;strokeColor=#dddddd;whiteSpace=wrap;';
+		v.style += addAllStyles(v.style, p, a, v);
+		
+		v.value = convertText(p);
+    	v.vertex = true;
+	    var icon1 = new mxCell(null, new mxGeometry(0.5, 0, w * 0.7 * scaleX, w * 0.7 * scaleY), 
+	    		s + icon + ';part=1;dashed=0;connectable=0;html=1;strokeColor=none;shadow=0;'); 
+
+	    icon1.geometry.relative = true;
+	    icon1.geometry.offset = new mxPoint(- scaleX * w * 0.35, 10 + (1 - scaleY) * w * 0.35);
+    	icon1.vertex = true;
+    	icon1.style += addAllStyles(icon1.style, p, a, icon1, isLastLblHTML);
+    	v.insert(icon1);
+	};
+	
 	function hasStyle(style, key)
 	{
 		if (style != null && key != null)
@@ -6403,6 +6905,19 @@ LucidImporter = {};
 		return false;
 	}
 	
+	function getDarkerClr(clr, perc)
+	{
+		function modComp(comp)
+		{
+			var v = Math.round(parseInt('0x' + comp) * perc).toString(16);
+			return v.length == 1? '0' + v : v;
+		}
+		
+		return '#' + modComp(clr.substr(1, 2)) +
+						 		modComp(clr.substr(3, 2)) +
+								modComp(clr.substr(5, 2));
+	};
+					
 	//composite shapes
 	function addCompositeShape(obj, select, graph)
 	{
@@ -6586,7 +7101,7 @@ LucidImporter = {};
 			    var isBPMN = cls.indexOf('BPMN') == 0;
 			    var hasTxt = p[mainTxtFld] != null;
 				
-				v.style = (isPool? 'swimlane;startSize=' + mainTxtHeight + ';' : 'fillColor=none;strokeColor=none;pointerEvents=0;') + 
+				v.style = (isPool? 'swimlane;startSize=' + mainTxtHeight + ';' : 'fillColor=none;strokeColor=none;pointerEvents=0;fontStyle=0;') + 
 					'html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;' +
 					'resizeParent=1;dropTarget=0;' + (rotatedSL? 'horizontalStack=0;' : '');
 				v.style += addAllStyles(v.style, p, a, v);
@@ -6594,9 +7109,12 @@ LucidImporter = {};
 				if (hasTxt)
 				{
 					v.value = convertText(p[mainTxtFld]);
-					v.style += (isLastLblHTML? 'overflow=block;fontSize=' + defaultFontSize + ';' : 
+					v.style += (isLastLblHTML? 'overflow=block;blockSpacing=1;fontSize=' + defaultFontSize + ';' +
+							gFontFamilyStyle
+							: 
 							getFontSize(p[mainTxtFld]) +
 							getFontColor(p[mainTxtFld]) + 
+							getFontFamily(p[mainTxtFld]) + 
 							getFontStyle(p[mainTxtFld]) +
 							getTextAlignment(p[mainTxtFld], v) + 
 							getTextLeftSpacing(p[mainTxtFld]) +
@@ -6611,7 +7129,7 @@ LucidImporter = {};
 				var totalOffset = 0; //relative
 				var lane = new Array();
 
-				var laneStyle = 'swimlane;html=1;whiteSpace=wrap;container=1;connectable=0;collapsible=0;startSize=' + laneTxtHeight + ';dropTarget=0;rounded=0;' + 
+				var laneStyle = 'swimlane;html=1;whiteSpace=wrap;container=1;connectable=0;collapsible=0;fontStyle=0;startSize=' + laneTxtHeight + ';dropTarget=0;rounded=0;' + 
 								(rotatedSL? 'horizontal=0;': '') +
 								(isBPMN? 'swimlaneLine=0;fillColor=none;' : '');
 				p['Rotation'] = 0; //Override rotation such that it doesn't mess with our coordinates
@@ -6718,7 +7236,7 @@ LucidImporter = {};
 				v.insert(cols);
 				var y = 0;
 				
-				var rowStyle = 'swimlane;html=1;whiteSpace=wrap;container=1;connectable=0;collapsible=0;dropTarget=0;horizontal=0;startSize=' + rowStartSize + ';';
+				var rowStyle = 'swimlane;html=1;whiteSpace=wrap;container=1;connectable=0;collapsible=0;dropTarget=0;horizontal=0;fontStyle=0;startSize=' + rowStartSize + ';';
 				
 				for (var j = 0; j < rowsNum; j++)
 				{
@@ -6755,7 +7273,7 @@ LucidImporter = {};
 									getTextVerticalAlignment(p[curRow]);
 				}
 				
-				var colStyle = 'swimlane;html=1;whiteSpace=wrap;container=1;connectable=0;collapsible=0;dropTarget=0;startSize=' + colStartSize + ';';
+				var colStyle = 'swimlane;html=1;whiteSpace=wrap;container=1;connectable=0;collapsible=0;dropTarget=0;fontStyle=0;startSize=' + colStartSize + ';';
 				var x = 0;
 				
 				for (var j = 0; j < colsNum; j++)
@@ -6803,7 +7321,7 @@ LucidImporter = {};
 				else
 				{
 					v.style = 'swimlane;startSize=25;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;' +
-								'resizeParent=1;dropTarget=0;rounded=1;arcSize=20;fontStyle=0';
+								'resizeParent=1;dropTarget=0;rounded=1;arcSize=20;fontStyle=0;';
 					v.value = convertText(p.State, true);
 					v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
 					v.style += getFillColor(p, a).replace('fillColor', 'swimlaneFillColor');
@@ -6815,10 +7333,23 @@ LucidImporter = {};
 					v.insert(content);
 				}
 				break;
+			case 'GSDFDProcessBlock' : 
+				var startSize = Math.round(p.nameHeight * scale);
+				v.style = 'shape=swimlane;html=1;rounded=1;arcSize=10;collapsible=0;fontStyle=0;startSize=' + startSize;
+				v.value = convertText(p.Number, true);
+				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+				v.style += getFillColor(p, a).replace('fillColor', 'swimlaneFillColor');
+				
+				var content = new mxCell('', new mxGeometry(0, startSize, w, h - startSize), 'rounded=1;arcSize=10;strokeColor=none;fillColor=none');
+				content.value = convertText(p.Text, true);
+				content.style += addAllStyles(content.style, p, a, content, isLastLblHTML);
+				content.vertex = true;
+				v.insert(content);
+				break;
 			case 'AndroidDevice' :
 				if (p.AndroidDeviceName != null)
 				{
-					
+					var rotation = getRotation(p, a, v);
 					v.style = "fillColor=#000000;strokeColor=#000000;";
 					var background = null;
 					var keyboard = null;
@@ -6827,35 +7358,36 @@ LucidImporter = {};
 					if (p.AndroidDeviceName == 'Tablet' || p.AndroidDeviceName == 'Mini Tablet' ||  (p.AndroidDeviceName == 'custom' && p.CustomDeviceType == 'Tablet'))
 					{
 						v.style += "shape=mxgraph.android.tab2;"
-						background = new mxCell('', new mxGeometry(w * 0.112, h * 0.077, w * 0.77, h * 0.85), '');
+						background = new mxCell('', new mxGeometry(0.112, 0.077, w * 0.77, h * 0.85), rotation);
 						
 						if (p.KeyboardShown)
 						{
-							keyboard = new mxCell('', new mxGeometry(w * 0.112, h * 0.727, w * 0.77, h * 0.2), 'shape=mxgraph.android.keyboard;');
+							keyboard = new mxCell('', new mxGeometry(0.112, 0.727, w * 0.77, h * 0.2), 'shape=mxgraph.android.keyboard;' + rotation);
 						}
 
 						if (!p.FullScreen)
 						{
-							statusBar = new mxCell('', new mxGeometry(w * 0.112, h * 0.077, w * 0.77, h * 0.03), 'shape=mxgraph.android.statusBar;strokeColor=#33b5e5;fillColor=#000000;fontColor=#33b5e5;fontSize=' + h * 0.015 + ';');
+							statusBar = new mxCell('', new mxGeometry(0.112, 0.077, w * 0.77, h * 0.03), 'shape=mxgraph.android.statusBar;strokeColor=#33b5e5;fillColor=#000000;fontColor=#33b5e5;fontSize=' + h * 0.015 + ';' + rotation);
 						}
 					}
 					else if (p.AndroidDeviceName == 'Large Phone' || p.AndroidDeviceName == 'Phone' ||  (p.AndroidDeviceName == 'custom' && p.CustomDeviceType == 'Phone'))
 					{
 						v.style += "shape=mxgraph.android.phone2;"
-						background = new mxCell('', new mxGeometry(w * 0.04, h * 0.092, w * 0.92, h * 0.816), '');
+						background = new mxCell('', new mxGeometry(0.04, 0.092, w * 0.92, h * 0.816), rotation);
 						
 						if (p.KeyboardShown)
 						{
-							keyboard = new mxCell('', new mxGeometry(w * 0.04, h * 0.708, w * 0.92, h * 0.2), 'shape=mxgraph.android.keyboard;');
+							keyboard = new mxCell('', new mxGeometry(0.04, 0.708, w * 0.92, h * 0.2), 'shape=mxgraph.android.keyboard;' + rotation);
 						}
 						
 						if (!p.FullScreen)
 						{
-							statusBar = new mxCell('', new mxGeometry(w * 0.04, h * 0.092, w * 0.92, h * 0.03), 'shape=mxgraph.android.statusBar;strokeColor=#33b5e5;fillColor=#000000;fontColor=#33b5e5;fontSize=' + h * 0.015 + ';');
+							statusBar = new mxCell('', new mxGeometry(0.04, 0.092, w * 0.92, h * 0.03), 'shape=mxgraph.android.statusBar;strokeColor=#33b5e5;fillColor=#000000;fontColor=#33b5e5;fontSize=' + h * 0.015 + ';' + rotation);
 						}
 					}
 					
 					background.vertex = true;
+					background.geometry.relative = true;
 					v.insert(background);
 					
 					if (p.Scheme == "Dark")
@@ -6870,12 +7402,14 @@ LucidImporter = {};
 					if (keyboard != null)
 					{
 						keyboard.vertex = true;
+						keyboard.geometry.relative = true;
 						v.insert(keyboard);
 					}
 
 					if (statusBar != null)
 					{
 						statusBar.vertex = true;
+						statusBar.geometry.relative = true;
 						v.insert(statusBar);
 					}
 				}
@@ -7556,7 +8090,7 @@ LucidImporter = {};
 				
 			case 'iOSNavBar' :
 				v.value = convertText(p.Title);
-				v.style += 'shape=partialRectangle;top=0;right=0;left=0;strokeColor=#979797;';
+				v.style += 'shape=partialRectangle;top=0;right=0;left=0;strokeColor=#979797;'
 					+ getLabelStyle(p.Title, isLastLblHTML);
 				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
 
@@ -7597,8 +8131,11 @@ LucidImporter = {};
 					v.insert(tab[i]);
 					tab[i].value = convertText(p["Tab_" + i]);
 					
-					tab[i].style += (isLastLblHTML? 'overflow=block;html=1;fontSize=' + defaultFontSize + ';' :
+					tab[i].style += (isLastLblHTML? 'overflow=block;blockSpacing=1;html=1;fontSize=' + defaultFontSize + ';' +
+									gFontFamilyStyle
+									:
 									getFontSize(p["Tab_" + i]) +
+									getFontFamily(p["Tab_" + i]) +
 									getFontColor(p["Tab_" + i]) + 
 									getFontStyle(p["Tab_" + i]) +
 									getTextAlignment(p["Tab_" + i]) + 
@@ -7931,8 +8468,11 @@ LucidImporter = {};
 				subtext.vertex = true;
 				v.insert(subtext);
 				subtext.value = convertText(p.text);
-				subtext.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';': 
-					getFontSize(p.text) + 
+				subtext.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' +
+					gFontFamilyStyle
+					: 
+					getFontSize(p.text) +
+					getFontFamily(p.text) + 
 					getFontColor(p.text) + 
 					getFontStyle(p.text));
 
@@ -8033,8 +8573,11 @@ LucidImporter = {};
 				subtext.vertex = true;
 				v.insert(subtext);
 				subtext.value = convertText(p.text);
-				subtext.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' :
+				subtext.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' +
+					gFontFamilyStyle
+					:
 					getFontSize(p.text) + 
+					getFontFamily(p.text) +
 					getFontColor(p.text) + 
 					getFontStyle(p.text));
 
@@ -8048,8 +8591,11 @@ LucidImporter = {};
 				text.vertex = true;
 				v.insert(text);
 				text.value = convertText(p.subtext);
-				text.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' :
+				text.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' +
+					gFontFamilyStyle
+					:
 					getFontSize(p.subtext) + 
+					getFontFamily(p.subtext) +
 					getFontColor(p.subtext) + 
 					getFontStyle(p.subtext));
 
@@ -8057,8 +8603,11 @@ LucidImporter = {};
 				subtext.vertex = true;
 				v.insert(subtext);
 				subtext.value = convertText(p.text);
-				subtext.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' :
+				subtext.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' +
+					gFontFamilyStyle
+					:
 					getFontSize(p.text) + 
+					getFontFamily(p.text) +
 					getFontColor(p.text) + 
 					getFontStyle(p.text));
 
@@ -8106,8 +8655,11 @@ LucidImporter = {};
 				text1.vertex = true;
 				v.insert(text1);
 				text1.value = convertText(p.text);
-				text1.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' :
+				text1.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' +
+					gFontFamilyStyle
+					:
 					getFontSize(p.text) +
+					getFontFamily(p.text) +
 					getFontColor(p.text) + 
 					getFontStyle(p.text));
 
@@ -8115,8 +8667,11 @@ LucidImporter = {};
 				text2.vertex = true;
 				v.insert(text2);
 				text2.value = convertText(p["bottom-text"]);
-				text2.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' :
+				text2.style += (isLastLblHTML? 'html=1;fontSize=' + defaultFontSize + ';' +
+					gFontFamilyStyle
+					:
 					getFontSize(p["bottom-text"]) +
+					getFontFamily(p["bottom-text"]) +
 					getFontColor(p["bottom-text"]) + 
 					getFontStyle(p["bottom-text"]));
 
@@ -8134,11 +8689,12 @@ LucidImporter = {};
 				break;
 				
 			case 'SMPage' :
+			//TODO Link icon (p.Url != "")
 				if (p.Group)
 				{
 					v.style += 'strokeColor=none;fillColor=none;'
 						
-					var item1 = new mxCell('', new mxGeometry(0, 0, w * 0.9, h * 0.9), 'part=1;');
+					var item1 = new mxCell('', new mxGeometry(0, 0, w * 0.9, h * 0.9), 'rounded=1;arcSize=3;part=1;');
 					item1.vertex = true;
 					v.insert(item1);
 					
@@ -8148,7 +8704,7 @@ LucidImporter = {};
 						getShadow(p) +
 						getStrokeWidth(p); 
 
-					var item2 = new mxCell('', new mxGeometry(w * 0.1, h * 0.1, w * 0.9, h * 0.9), 'part=1;');
+					var item2 = new mxCell('', new mxGeometry(w * 0.1, h * 0.1, w * 0.9, h * 0.9), 'rounded=1;arcSize=3;part=1;');
 					item2.vertex = true;
 					v.insert(item2);
 					
@@ -8162,15 +8718,17 @@ LucidImporter = {};
 					
 					if (p.Future)
 					{
-						item1.style += 'dashed=1;';
-						item2.style += 'dashed=1;';
+						item1.style += 'dashed=1;fixDash=1;';
+						item2.style += 'dashed=1;fixDash=1;';
 					}
 				}
 				else
 				{
+					v.style += 'rounded=1;arcSize=3;';
+					
 					if (p.Future)
 					{
-						v.style += 'dashed=1;';
+						v.style += 'dashed=1;fixDash=1;';
 					}
 					
 					v.value = convertText(p.Text);
@@ -8403,7 +8961,7 @@ LucidImporter = {};
 							getLabelStyle(p.Text, isLastLblHTML);
 						break
 					case 3:
-						v.style += 'shape=ext;dashed=1;dashPattern=2 1;' +
+						v.style += 'shape=ext;dashed=1;dashPattern=2 5;' +
 							getLabelStyle(p.Text, isLastLblHTML);
 						break
 					case 4:
@@ -8689,6 +9247,59 @@ LucidImporter = {};
 
 				break;
 			case 'BPMNChoreography' :
+				try
+				{
+					var st = getColor(p.FillColor);
+					var darkerClr = getDarkerClr(st, 0.75);
+					
+					var fz = getFontSize(p.Name).match(/\d+/);
+					var th = Math.max(mxUtils.getSizeForString(p.Name.t, fz? fz[0] : defaultFontSize, null, w - 10).height, 24);
+					st = 'swimlaneFillColor=' + darkerClr + ';'
+					
+					v.value = convertText(p.Name);
+					v.style += 'swimlane;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;' + st +
+						'startSize=' + th + ';spacingLeft=3;spacingRight=3;fontStyle=0;' +
+						getLabelStyle(p.Name, isLastLblHTML);
+					v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+					
+					var curY = th;
+					var fz = getFontSize(p.TaskName).match(/\d+/);
+					var curH = p.TaskHeight? p.TaskHeight * scale : Math.max(mxUtils.getSizeForString(p.TaskName.t, fz? fz[0] : defaultFontSize, null, w - 10).height + 15, 24);
+					var task = new mxCell('', new mxGeometry(0, curY, w, curH), 'part=1;html=1;resizeHeight=0;spacingTop=-1;spacingLeft=3;spacingRight=3;');
+					task.value = convertText(p.TaskName);
+					task.vertex = true;
+					v.insert(task);
+					task.style += getLabelStyle(p.TaskName, isLastLblHTML);
+					task.style += addAllStyles(task.style, p, a, task, isLastLblHTML);
+					curY += curH;
+					
+					var item = [];
+					
+					for (var i = 0; i < p.Fields; i++)
+					{
+						var pTxt = p['Participant' + (i + 1)];
+						var fz = getFontSize(pTxt).match(/\d+/);
+						var curH =  Math.max(mxUtils.getSizeForString(pTxt.t, fz? fz[0] : defaultFontSize, null, w - 10).height, 24);
+						item[i] = new mxCell('', new mxGeometry(0, curY, w, curH), 'part=1;html=1;resizeHeight=0;fillColor=none;spacingTop=-1;spacingLeft=3;spacingRight=3;');
+						curY += curH;
+						item[i].vertex = true;
+						v.insert(item[i]);
+						item[i].style += getLabelStyle(pTxt, isLastLblHTML);
+						item[i].style += addAllStyles(item[i].style, p, a, item[i], isLastLblHTML);
+						item[i].value = convertText(pTxt);
+					}
+	/*
+	TODO: Add support for the following
+					"bpmnChoreographyType": 0, //Plus sign
+	                "initiatingMessage": 0, //Envelop before
+	                "responseMessage": 0, //Envelop after
+	*/
+				}
+				catch(e)
+				{
+					//Ignore
+					console.log(e);
+				}
 				break;
 			case 'BPMNConversation' :
 				v.style += 'shape=hexagon;perimeter=hexagonPerimeter2;';
@@ -8862,7 +9473,27 @@ LucidImporter = {};
 				item1.style += addAllStyles(item1.style, p, a, item1, isLastLblHTML);
 
 				break;
+			case 'OrgBlock' :
+				var lbls = '';
 				
+				for (var key in p.Active)
+				{
+					if (key == 'Photo' || !p.Active[key]) continue;
+					
+					lbls += convertText(p[key], true);
+				}
+				
+				if (p.Active.Photo)
+				{
+					var imgSize = w * 0.4;
+					v.style += 'spacingLeft=' + imgSize + ';imageWidth=' + (imgSize - 4) + ';imageHeight=' + (imgSize - 4) + 
+						';imageAlign=left;imageVerticalAlign=top;image=' + mapImgUrl(p.Photo);
+				}
+				
+				v.value = lbls;
+				v.style += addAllStyles(v.style, p, a, v, true);
+
+				break;				
 			case 'DefaultTableBlock' :
 				try
 				{
@@ -8950,7 +9581,7 @@ LucidImporter = {};
 								
 								for (var l = j + 1; l < j + spans.w; l++)
 								{
-									skipCells[l + ',' + j] = true;
+									skipCells[k + ',' + l] = true;
 								}
 							}
 							
@@ -8969,7 +9600,7 @@ LucidImporter = {};
 
 							var cell = new mxCell('', new mxGeometry(x, y, cw, ch), 'shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;'
 									+ (hideV? 'left=0;right=0;' : '') + (hideH? 'top=0;bottom=0;' : '')
-									+ createStyle(mxConstants.STYLE_FILLCOLOR, getColor(fillClr), getColor(tblFillClr))
+									+ getFillColor({FillColor: fillClr || tblFillClr})
 									+ createStyle(mxConstants.STYLE_STROKECOLOR, getColor(borderClr), getColor(tblLnClr))
 									+ (borderW != null ? createStyle(mxConstants.STYLE_STROKEWIDTH, Math.round(parseFloat(borderW) * scale), '1') : '')
 									+ (lnOp? lnOp : tblLnOp) 
@@ -9001,7 +9632,10 @@ LucidImporter = {};
 						y += h;
 					}
 				}
-				catch(e){}
+				catch(e)
+				{
+					console.log(e);
+				}
 				break;
 			case 'VSMDedicatedProcessBlock' :
 			case 'VSMProductionControlBlock' :
@@ -9034,7 +9668,7 @@ LucidImporter = {};
 				v.insert(text1);
 				text1.value = convertText(p.Title);
 				text1.style += getLabelStyle(p.Title, isLastLblHTML);
-
+				p.Text = null;
 				break;
 				
 			case 'VSMSharedProcessBlock' :
@@ -9164,7 +9798,14 @@ LucidImporter = {};
 				item3.style += addAllStyles(item3.style, p, a, item3, isLastLblHTML);
 				
 				break;
-			case 'VSMTimelineBlock' :
+			case 'VSMElectronicInformationArrow' : 
+				v.style = 'group;';
+				v.value = convertText(p.Title);
+				v.style += getLabelStyle(p.Title, isLastLblHTML);
+				var edge = new mxCell('', new mxGeometry(0, 0, w, h), 'shape=mxgraph.lean_mapping.electronic_info_flow_edge;html=1;entryX=0;entryY=1;exitX=1;exitY=0;');
+				edge.edge = true;
+				edge.geometry.relative = 1;
+				graph.addCell(edge, v, null, v, v);
 				break;
 			case 'AWSRoundedRectangleContainerBlock2' :
 				v.style += 'strokeColor=none;fillColor=none;';
@@ -9963,6 +10604,10 @@ LucidImporter = {};
 				break;
 				
 			case 'Equation' :
+				LucidImporter.hasMath = true;
+				v.style += 'strokeColor=none;';
+				v.style += addAllStyles(v.style, p, a, v);
+				v.value = '$$' + p.Latex + '$$';
 				break;
 			case 'fpDoor' :
 				v.style += 'shape=mxgraph.floorplan.doorRight;';
@@ -9975,7 +10620,12 @@ LucidImporter = {};
 		    	v.style += addAllStyles(v.style, p, a, v);
 
 				break;
-				
+			case 'fpWall' :
+				v.style += 'labelPosition=center;verticalAlign=bottom;verticalLabelPosition=top;';
+				v.value = convertText(p);
+				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+				v.style = v.style.replace('rotation=180;', ''); //180 rotation cause the labels to be upside down which doesn't match Lucid 
+			break;
 			case 'fpDoubleDoor' :
 				v.style += 'shape=mxgraph.floorplan.doorDouble;';
 
@@ -10637,7 +11287,7 @@ LucidImporter = {};
 				}
 
 				v.style += addAllStyles(v.style, p, a, v);
-
+				p.Text = null;
 				break;
 			case 'UI2AccordionBlock' :
 				
@@ -11214,7 +11864,10 @@ LucidImporter = {};
 				}
 				
 				break;
-				
+			case 'UI2SelectBlock' : 
+				v.style += 'shape=mxgraph.mockup.forms.comboBox;strokeColor=#999999;fillColor=#ddeeff;align=left;fillColor2=#aaddff;mainText=;fontColor=#666666';
+				v.value = convertText(p.Selected);
+				break;
 			case 'UI2HSliderBlock' :
 			case 'UI2VSliderBlock' :
 				v.style += 'shape=mxgraph.mockup.forms.horSlider;sliderStyle=basic;handleStyle=handle;';
@@ -11257,11 +11910,9 @@ LucidImporter = {};
 				break;
 
 			case 'UI2SearchBlock' :
-				v.style += 'shape=mxgraph.mockup.forms.searchBox;mainText=;flipH=1;align=left;spacingLeft=26;' + 
-					getFontSize(p.Search) +
-					getFontColor(p.Search) + 
-					getFontStyle(p.Search);
 				v.value = convertText(p.Search);
+				v.style += 'shape=mxgraph.mockup.forms.searchBox;mainText=;flipH=1;align=left;spacingLeft=26;' + 
+					getLabelStyle(p.Search, isLastLblHTML);
 				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
 				
 				break;
@@ -11275,16 +11926,111 @@ LucidImporter = {};
 					fc = 'fillColor=#000000;'
 				}
 				
-				v.style += 'shape=mxgraph.mockup.forms.spinner;spinLayout=right;spinStyle=normal;adjStyle=triangle;mainText=;align=left;spacingLeft=8;' + fc + 
-					getFontSize(p.Number) +
-					getFontColor(p.Number) + 
-					getFontStyle(p.Number);
 				v.value = convertText(p.Number);
+				v.style += 'shape=mxgraph.mockup.forms.spinner;spinLayout=right;spinStyle=normal;adjStyle=triangle;mainText=;align=left;spacingLeft=8;' + fc + 
+					getLabelStyle(p.Number, isLastLblHTML);
 				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
 				
 				break;
 				
 			case 'UI2TableBlock' :
+				//Create table as HTML one
+				try
+				{
+					var fillClr = getColor(p.FillColor), lineClr = getColor(p.LineColor), header, altRow, borderStyle = '', rowH = 20;
+					v.style = 'html=1;overflow=fill;verticalAlign=top;spacing=0;';
+					var htmlTable = '<table style="width:100%;height:100%;border-collapse: collapse;border: 1px solid ' + lineClr + ';">';
+					var csvLines = p.Data.split('\n');
+					
+					if (!p.AltRow || p.AltRow == 'default')
+					{
+						altRow = getDarkerClr(fillClr, 0.95);
+					}
+					else if (p.AltRow == 'none')
+					{
+						altRow = fillClr;
+					}
+					else
+					{
+						altRow = getColor(p.AltRow);
+					}
+					
+					if (!p.Header || p.Header == 'default')
+					{
+						header = getDarkerClr(fillClr, 0.8);
+					}
+					else if (p.Header == 'none')
+					{
+						header = altRow;
+					}
+					else
+					{
+						header = getColor(p.Header);
+					}
+					
+					if (p.GridLines == 'full')
+					{
+						borderStyle = 'border: 1px solid ' + lineClr;
+						rowH = 19;
+					}
+					else if (p.GridLines == 'row')
+					{
+						borderStyle = 'border-bottom: 1px solid ' + lineClr;
+						rowH = 19;
+					}
+					else if (p.GridLines == 'default' || p.GridLines == 'column')
+					{
+						borderStyle = 'border-right: 1px solid ' + lineClr;
+					}
+					
+					csvLines = csvLines.filter(function(l)
+					{
+						return l;
+					});
+					
+					if (/^\{[^}]*\}$/.test(csvLines[csvLines.length - 1]))
+					{
+						csvLines.pop();
+					}
+					
+					var cols = csvLines[0].split(',').length;
+					
+					var emptyRow = '';
+					
+					for (var j = 0; j < cols - 1; j++)
+					{
+						emptyRow += ' , ';
+					}
+							
+					for (var i = csvLines.length; i < Math.ceil(h / 20); i++)
+					{
+						csvLines.push(emptyRow)
+					}
+					
+					for (var i = 0; i < csvLines.length; i++)
+					{
+						htmlTable += '<tr style="height: ' + rowH + 'px;background:' + (i == 0? header : 
+								(i % 2? fillClr : altRow)) + '">';
+						var els = csvLines[i].split(',');
+						
+						for (var j = 0; j < els.length; j++)
+						{
+							var cellProp = p['Cell_' + i + '_' + j];
+							var txtClr = cellProp && cellProp.m && cellProp.m[0] && cellProp.m[0].n == 'c'?  getColor(cellProp.m[0].v) : lineClr;
+							htmlTable += '<td style="height: ' + rowH + 'px;color:' + txtClr + ';' + borderStyle + '">' + mxUtils.htmlEntities(els[j]) + '</td>';
+						}
+						
+						htmlTable += '</tr>';
+					}
+					
+					htmlTable += '</table>';
+					v.value = htmlTable;
+				}
+				catch(e)
+				{
+					//Ignore
+					console.log(e);
+				}
 				break;
 			case 'UI2ButtonBarBlock' :
 				v.style += addAllStyles(v.style, p, a, v);
@@ -11569,13 +12315,14 @@ LucidImporter = {};
 				v.style += 'shape=mxgraph.mockup.misc.progressBar;fillColor2=#888888;barPos=' + (p.ScrollVal * 100) + ';';
 				
 				break;
-				
+			
+			case 'CalloutSquareBlock':
 			case 'UI2TooltipSquareBlock' :
-				v.value = convertText(p.Tip);
+				v.value = convertText(p.Tip || p.Text);
 				v.style += 'html=1;shape=callout;flipV=1;base=13;size=7;position=0.5;position2=0.66;rounded=1;arcSize=' + (p.RoundCorners) + ';' +
-					getLabelStyle(p.Tip, isLastLblHTML);
+					getLabelStyle(p.Tip || p.Text, isLastLblHTML);
 				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
-				
+				v.geometry.height += 10;
 				break;
 			case 'UI2CalloutBlock' :
 				v.value = convertText(p.Txt);
@@ -11640,7 +12387,7 @@ LucidImporter = {};
 					}
 					
 					v.value = convertText(p.Title);
-					v.style += 'swimlane;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;' + st +
+					v.style += 'swimlane;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;fontStyle=0;marginBottom=0;' + st +
 						'startSize=' + th + ';' +
 						getLabelStyle(p.Title, isLastLblHTML);
 					v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
@@ -11684,15 +12431,13 @@ LucidImporter = {};
 						var extH = p.ExtraHeightSet && i == 1? (p.ExtraHeight * scale) : 0;
 						
 						var curH = Math.round((h - th) * itemH) + extH;
-						item[i] = new mxCell('', new mxGeometry(0, curY, w, curH), 'part=1;html=1;resizeHeight=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;');
+						item[i] = new mxCell('', new mxGeometry(0, curY, w, curH), 'part=1;html=1;whiteSpace=wrap;resizeHeight=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;');
 						curY += curH;
 						item[i].vertex = true;
 						v.insert(item[i]);
 						item[i].style += st +
 							getOpacity(p, a, item[i]) +
-							getFontSize(p['Text' + (i + 1)]) +
-							getFontColor(p['Text' + (i + 1)]) + 
-							getFontStyle(p['Text' + (i + 1)]);
+							getLabelStyle(p['Text' + (i + 1)], isLastLblHTML);
 						
 						item[i].value = convertText(p['Text' + (i + 1)]);
 					}
@@ -11718,7 +12463,7 @@ LucidImporter = {};
 				}
 				
 				v.value = convertText(p.Name);
-				v.style += 'swimlane;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;' + st +
+				v.style += 'swimlane;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;fontStyle=0;marginBottom=0;' + st +
 					'startSize=' + th + ';' +
 					getLabelStyle(p.Name, isLastLblHTML);
 				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
@@ -11740,14 +12485,12 @@ LucidImporter = {};
 				{
 					var itemH = 0;
 					var curH = p['Field' + (i + 1) + '_h'] * scale;
-					item[i] = new mxCell('', new mxGeometry(0, curY, w, curH), 'part=1;resizeHeight=0;strokeColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;');
+					item[i] = new mxCell('', new mxGeometry(0, curY, w, curH), 'part=1;resizeHeight=0;strokeColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;whiteSpace=wrap;');
 					curY += curH;
 					item[i].vertex = true;
 					v.insert(item[i]);
 					item[i].style += st +
-						getFontSize(p['Field' + (i + 1)]) +
-						getFontColor(p['Field' + (i + 1)]) + 
-						getFontStyle(p['Field' + (i + 1)]);
+						getLabelStyle(p['Field' + (i + 1)], isLastLblHTML);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
 					{
@@ -11775,7 +12518,7 @@ LucidImporter = {};
 				}
 				
 				v.value = convertText(p.Name);
-				v.style += 'swimlane;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;' + st +
+				v.style += 'swimlane;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fontStyle=0;' + st +
 					'startSize=' + th + ';' +
 					getLabelStyle(p.Name, isLastLblHTML);
 
@@ -11804,13 +12547,11 @@ LucidImporter = {};
 				{
 					var itemH = 0;
 
-					key[i] = new mxCell('', new mxGeometry(0, currH, keyW, p['Key' + (i + 1) + '_h'] * scale), 'strokeColor=none;part=1;resizeHeight=0;align=center;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;');
+					key[i] = new mxCell('', new mxGeometry(0, currH, keyW, p['Key' + (i + 1) + '_h'] * scale), 'strokeColor=none;part=1;resizeHeight=0;align=center;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;whiteSpace=wrap;');
 					key[i].vertex = true;
 					v.insert(key[i]);
 					key[i].style += st +
-						getFontSize(p['Key' + (i + 1)]) +
-						getFontColor(p['Key' + (i + 1)]) + 
-						getFontStyle(p['Key' + (i + 1)]);
+						getLabelStyle(p['Key' + (i + 1)], isLastLblHTML);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
 					{
@@ -11824,13 +12565,11 @@ LucidImporter = {};
 
 					key[i].value = convertText(p['Key' + (i + 1)]);
 					
-					item[i] = new mxCell('', new mxGeometry(keyW, currH, w - keyW, p['Field' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;');
+					item[i] = new mxCell('', new mxGeometry(keyW, currH, w - keyW, p['Field' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;html=1;whiteSpace=wrap;');
 					item[i].vertex = true;
 					v.insert(item[i]);
 					item[i].style += st +
-						getFontSize(p['Field' + (i + 1)]) +
-						getFontColor(p['Field' + (i + 1)]) + 
-						getFontStyle(p['Field' + (i + 1)]);
+						getLabelStyle(p['Field' + (i + 1)], isLastLblHTML);
 					v.style += addAllStyles(v.style, p, a, v);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
@@ -11860,7 +12599,7 @@ LucidImporter = {};
 					st = 'swimlaneFillColor=#ffffff;'
 				}
 				
-				v.style += 'swimlane;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;' + st +
+				v.style += 'swimlane;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fontStyle=0;' + st +
 					'startSize=' + th + ';' +
 					getLabelStyle(p.Name);
 
@@ -11890,13 +12629,11 @@ LucidImporter = {};
 				{
 					var itemH = 0;
 
-					key[i] = new mxCell('', new mxGeometry(0, currH, keyW, p['Field' + (i + 1) + '_h'] * scale), 'strokeColor=none;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;');
+					key[i] = new mxCell('', new mxGeometry(0, currH, keyW, p['Field' + (i + 1) + '_h'] * scale), 'strokeColor=none;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;');
 					key[i].vertex = true;
 					v.insert(key[i]);
 					key[i].style += st +
-						getFontSize(p['Field' + (i + 1)]) +
-						getFontColor(p['Field' + (i + 1)]) + 
-						getFontStyle(p['Field' + (i + 1)]);
+						getLabelStyle(p['Field' + (i + 1)], isLastLblHTML);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
 					{
@@ -11911,13 +12648,11 @@ LucidImporter = {};
 					key[i].value = convertText(p['Field' + (i + 1)]);
 					key[i].style += addAllStyles(key[i].style, p, a, key[i], isLastLblHTML);
 					
-					item[i] = new mxCell('', new mxGeometry(keyW, currH, w - keyW, p['Type' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;');
+					item[i] = new mxCell('', new mxGeometry(keyW, currH, w - keyW, p['Type' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;');
 					item[i].vertex = true;
 					v.insert(item[i]);
 					item[i].style += st +
-						getFontSize(p['Type' + (i + 1)]) +
-						getFontColor(p['Type' + (i + 1)]) + 
-						getFontStyle(p['Type' + (i + 1)]);
+						getLabelStyle(p['Type' + (i + 1)], isLastLblHTML);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
 					{
@@ -11946,7 +12681,7 @@ LucidImporter = {};
 					st = 'swimlaneFillColor=#ffffff;'
 				}
 				
-				v.style += 'swimlane;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;' + st +
+				v.style += 'swimlane;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fontStyle=0;' + st +
 					'startSize=' + th + ';' +
 					getLabelStyle(p.Name);
 
@@ -11983,13 +12718,11 @@ LucidImporter = {};
 				{
 					var itemH = 0;
 
-					key[i] = new mxCell('', new mxGeometry(0, currH, keyW, p['Key' + (i + 1) + '_h'] * scale), 'strokeColor=none;part=1;resizeHeight=0;align=center;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;');
+					key[i] = new mxCell('', new mxGeometry(0, currH, keyW, p['Key' + (i + 1) + '_h'] * scale), 'strokeColor=none;part=1;resizeHeight=0;align=center;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;');
 					key[i].vertex = true;
 					v.insert(key[i]);
 					key[i].style += st +
-						getFontSize(p['Key' + (i + 1)]) +
-						getFontColor(p['Key' + (i + 1)]) + 
-						getFontStyle(p['Key' + (i + 1)]);
+						getLabelStyle(p['Key' + (i + 1)], isLastLblHTML);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
 					{
@@ -12004,13 +12737,11 @@ LucidImporter = {};
 					key[i].value = convertText(p['Key' + (i + 1)]);
 					key[i].style += addAllStyles(key[i].style, p, a, key[i], isLastLblHTML);
 					
-					item[i] = new mxCell('', new mxGeometry(keyW, currH, w - keyW - typeW, p['Field' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;');
+					item[i] = new mxCell('', new mxGeometry(keyW, currH, w - keyW - typeW, p['Field' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;');
 					item[i].vertex = true;
 					v.insert(item[i]);
 					item[i].style += st +
-						getFontSize(p['Field' + (i + 1)]) +
-						getFontColor(p['Field' + (i + 1)]) + 
-						getFontStyle(p['Field' + (i + 1)]);
+						getLabelStyle(p['Field' + (i + 1)], isLastLblHTML);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
 					{
@@ -12025,13 +12756,11 @@ LucidImporter = {};
 					item[i].value = convertText(p['Field' + (i + 1)]);
 					item[i].style += addAllStyles(item[i].style, p, a, item[i], isLastLblHTML);
 					
-					type[i] = new mxCell('', new mxGeometry(w - typeW, currH, typeW, p['Type' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;');
+					type[i] = new mxCell('', new mxGeometry(w - typeW, currH, typeW, p['Type' + (i + 1) + '_h'] * scale), 'shape=partialRectangle;top=0;right=0;bottom=0;part=1;resizeHeight=0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;');
 					type[i].vertex = true;
 					v.insert(type[i]);
 					type[i].style += st +
-						getFontSize(p['Type' + (i + 1)]) +
-						getFontColor(p['Type' + (i + 1)]) + 
-						getFontStyle(p['Type' + (i + 1)]);
+						getLabelStyle(p['Type' + (i + 1)], isLastLblHTML);
 
 					if (p.AltRows == 1 && (i % 2 != 0))
 					{
@@ -12210,6 +12939,22 @@ LucidImporter = {};
 			case 'GCPInputBlank' :
 				addGCP2UserDeviceCard('transparent', 1, 1, w, h, v, p, a);
 				break;
+// no corresponding icons, only with shadows							
+//			case 'GCPAppEngineProductCard' :
+//				addGCP2ExpandedProductCard('compute.app_engine', 1, 1, w, h, v, p, a);
+//				break;
+//			case 'GCPCloudDataflowProductCard' :
+//				addGCP2ExpandedProductCard('cloud_dataflow', 1, 1, w, h, v, p, a);
+//				break;
+//			case 'GCPCloudDataprocProductCard' :
+//				addGCP2ExpandedProductCard('cloud_dataproc', 1, 1, w, h, v, p, a);
+//				break;
+//			case 'GCPComputeEngineProductCard' :
+//				addGCP2ExpandedProductCard('compute_engine', 1, 1, w, h, v, p, a);
+//				break;
+//			case 'GCPContainerEngineProductCard' :
+//				addGCP2ExpandedProductCard('compute_engine', 1, 1, w, h, v, p, a);
+//				break;
 			case 'PresentationFrameBlock' :
 				if (p.ZOrder == 0) //These are hidden
 				{
@@ -12293,9 +13038,10 @@ LucidImporter = {};
 				
 				v.insert(side);
 				break;
+			case 'VSMTimelineBlock':
 			case 'TimelineBlock':
 			//TODO Timeline shapes are postponed, this code is a work-in-progress
-				try
+			/*	try
 				{
 					var daysMap = {
 						'Sunday': 0,
@@ -12367,10 +13113,12 @@ LucidImporter = {};
 				{
 					console.log(e); //Ignore
 				}
-				break;
+				break;*/
 			case 'TimelineMilestoneBlock':
-				break;
+			//	break;
 			case 'TimelineIntervalBlock':
+				LucidImporter.hasTimeLine = true;
+				LucidImporter.hasUnknownShapes = true;
 				break;
 			case 'FreehandBlock':
 				try
@@ -12393,6 +13141,7 @@ LucidImporter = {};
 						{
 							var shape = stencil.stencils[i];
 							var cell = new mxCell('', new mxGeometry(0, 0, w, h), 'shape=' + shape.shapeStencil + ';');
+							var sfc = shape.FillColor, slc = shape.LineColor, slw = shape.LineWidth;
 							
 							if (shape.FillColor == 'prop')
 							{
@@ -12420,6 +13169,8 @@ LucidImporter = {};
 							}
 							//Add stencil styles
 							cell.style += addAllStyles(cell.style, shape, a, cell, isLastLblHTML);
+							// Restore shape properties
+							shape.FillColor = sfc; shape.LineColor = slc; shape.LineWidth = slw;
 							//Add other styles from parent
 							var fc = p.FillColor, lc = p.LineColor, lw = p.LineWidth;
 							p.FillColor = null; p.LineColor = null; p.LineWidth = null;
@@ -12525,6 +13276,210 @@ LucidImporter = {};
 				v.value = convertText(p);
 				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
 			break;
+			case 'VPCSubnet2017':
+			case 'VirtualPrivateCloudContainer2017':
+			case 'ElasticBeanStalkContainer2017':
+			case 'EC2InstanceContents2017':
+			case 'AWSCloudContainer2017':
+			case 'CorporateDataCenterContainer2017':
+				//all use the same code, just icon is different
+				var iconStyle, iconW, iconH;
+				
+				switch(cls)
+				{
+					case 'VPCSubnet2017':
+						iconStyle = 'shape=mxgraph.aws3.permissions;fillColor=#D9A741;';
+						iconW = 30;
+						iconH = 35;
+					break;
+					case 'VirtualPrivateCloudContainer2017':
+						iconStyle = 'shape=mxgraph.aws3.virtual_private_cloud;fillColor=#F58536;';
+						iconW = 52;
+						iconH = 36;
+					break;
+					case 'ElasticBeanStalkContainer2017':
+						iconStyle = 'shape=mxgraph.aws3.elastic_beanstalk;fillColor=#F58536;';
+						iconW = 30;
+						iconH = 41;
+					break;
+					case 'EC2InstanceContents2017':
+						iconStyle = 'shape=mxgraph.aws3.instance;fillColor=#F58536;';
+						iconW = 40;
+						iconH = 41;
+					break;
+					case 'AWSCloudContainer2017':
+						iconStyle = 'shape=mxgraph.aws3.cloud;fillColor=#F58536;';
+						iconW = 52;
+						iconH = 36;
+					break;
+					case 'CorporateDataCenterContainer2017':
+						iconStyle = 'shape=mxgraph.aws3.corporate_data_center;fillColor=#7D7C7C;';
+						iconW = 30;
+						iconH = 42;
+					break;
+				}
+				v.style = 'rounded=1;arcSize=10;dashed=0;verticalAlign=bottom;';
+				v.value = convertText(p);
+				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+				v.geometry.y += 20;
+				v.geometry.height -= 20;
+				var icon = new mxCell('', new mxGeometry(20, -20, iconW, iconH), iconStyle);
+				icon.vertex = true;
+				v.insert(icon);
+			break;
+			case 'FlexiblePolygonBlock':
+				var parts = ["<shape strokewidth=\"inherit\"><foreground>"];
+				parts.push("<path>");
+				
+				for (var j = 0; j < p.Vertices.length; j++)
+				{
+					var line = p.Vertices[j];
+					
+					if (j == 0)
+					{
+						parts.push("<move x=\"" + (line.x * 100) + "\" y=\"" + (line.y * 100) + "\"/>");
+					}
+					else
+					{
+						parts.push("<line x=\"" + (line.x * 100) + "\" y=\"" + (line.y * 100) + "\"/>");
+					}
+				}
+				
+				parts.push("</path>");
+				parts.push("<fillstroke/>");
+				parts.push("</foreground></shape>");
+				v.style = 'shape=stencil(' + Graph.compress(parts.join('')) + ');';
+				v.value = convertText(p);
+				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+			break;
+			case 'InfographicsBlock':
+				var min = p.ShapeData_1.Value;
+				var max = p.ShapeData_2.Value - min;
+				var val = p.ShapeData_3.Value - min;
+				var thickness = p.ShapeData_4.Value * w / 200; //Percentage of half of width
+				var index = p.InternalStencilId == 'ProgressBar'? 4 : 5;
+				var fillClr = p['ShapeData_' + index].Value;
+				fillClr = fillClr == '=fillColor()'? p.FillColor : fillClr;
+				var bkgClr = p['ShapeData_' + (index + 1)].Value;
+				
+				switch(p.InternalStencilId)
+				{
+					case 'ProgressDonut':
+						v.style = 'shape=mxgraph.basic.donut;dx=' + thickness + ';strokeColor=none;fillColor=' + getColor(bkgClr) + ';' + getOpacity2(bkgClr, 'fillOpacity');
+						v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+						var inner = new mxCell('', new mxGeometry(0, 0, w, h), 'shape=mxgraph.basic.partConcEllipse;startAngle=0;endAngle=' + (val / max) + ';arcWidth=' + (thickness / w * 2) + 
+										';strokeColor=none;fillColor=' + getColor(fillClr) + ';' + getOpacity2(fillClr, 'fillOpacity'));
+						inner.style += addAllStyles(inner.style, p, a, inner, isLastLblHTML);
+						inner.vertex = true;
+						inner.geometry.relative = 1;
+						v.insert(inner);
+					break;
+					case 'ProgressHalfDonut':
+						//as a workaround do it as a circle
+						v.geometry.height *= 2;
+						v.geometry.rotate90(); //TODO fix shape rotation
+						var angle = val / max / 2;
+						v.style = 'shape=mxgraph.basic.partConcEllipse;startAngle=0;endAngle=' + angle + ';arcWidth=' + (thickness * 2 / w) + 
+										';strokeColor=none;fillColor=' + getColor(fillClr) + ';' + getOpacity2(fillClr, 'fillOpacity')
+						
+						p.Rotation -= Math.PI / 2;
+						v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+						var inner = new mxCell('', new mxGeometry(0, 0, v.geometry.width, v.geometry.height), 'shape=mxgraph.basic.partConcEllipse;startAngle=0;endAngle=' + (0.5 - angle) + ';arcWidth=' + (thickness * 2 / w) + 
+										';strokeColor=none;flipH=1;fillColor=' + getColor(bkgClr) + ';' + getOpacity2(bkgClr, 'fillOpacity'));
+						p.Rotation += Math.PI;
+						inner.style += addAllStyles(inner.style, p, a, inner, isLastLblHTML);
+						inner.vertex = true;
+						inner.geometry.relative = 1;
+						v.insert(inner);
+					break;
+					case 'ProgressBar':
+						v.style = 'strokeColor=none;fillColor=' + getColor(bkgClr) + ';' + getOpacity2(bkgClr, 'fillOpacity');
+						v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+						var inner = new mxCell('', new mxGeometry(0, 0, w * val / max, h), 'strokeColor=none;fillColor=' + getColor(fillClr) + ';' + getOpacity2(fillClr, 'fillOpacity'));
+						inner.style += addAllStyles(inner.style, p, a, inner, isLastLblHTML);
+						inner.vertex = true;
+						inner.geometry.relative = 1;
+						v.insert(inner);
+					break;
+				}
+			break;
+			case 'InternalStorageBlock': 
+				v.style += 'shape=internalStorage;dx=10;dy=10';
+				
+				//Adjust left and top spacing to handle the shape
+				if (p.Text && p.Text.m)
+				{
+					var m = p.Text.m, isMT = false, isIL = false;
+	
+					for (var i = 0; i < m.length; i++)
+					{
+						var currM = m[i];
+						
+						if (!isMT && currM.n == 'mt')
+						{
+							currM.v = 17 + (currM.v || 0);
+							isMT = true;
+						}
+						else if (!isIL && currM.n == 'il')
+						{
+							currM.v = 17 + (currM.v || 0);
+							isIL = true;
+						}
+					}
+
+					if (!isMT)
+					{
+						m.push({
+							"s": 0,
+                            "n": "mt",
+                            "v": 17
+						});
+					}
+					
+					if (!isIL)
+					{
+						m.push({
+							"s": 0,
+                            "n": "il",
+                            "v": 17
+						});
+					}
+				}
+				
+				v.value = convertText(p);
+				v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+			break;
+			case 'PersonRoleBlock' :
+				try
+				{
+					var st = getFillColor(p, a);
+					var th = h/2;
+					st = st.replace('fillColor', 'swimlaneFillColor');
+					
+					if (st == '')
+					{
+						st = 'swimlaneFillColor=#ffffff;'
+					}
+				
+					v.value = convertText(p.Role);
+					v.style += 'swimlane;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;' + st +
+						'startSize=' + th + ';spacingLeft=3;spacingRight=3;fontStyle=0;' +
+						getLabelStyle(p.Role, isLastLblHTML);
+					v.style += addAllStyles(v.style, p, a, v, isLastLblHTML);
+					
+					var name = new mxCell('', new mxGeometry(0, h/2, w, h/2), 'part=1;html=1;resizeHeight=0;spacingTop=-1;spacingLeft=3;spacingRight=3;');
+					name.value = convertText(p.Name);
+					name.vertex = true;
+					v.insert(name);
+					name.style += getLabelStyle(p.Name, isLastLblHTML);
+					name.style += addAllStyles(name.style, p, a, name, isLastLblHTML);
+				}
+				catch(e)
+				{
+					//Ignore
+					console.log(e);
+				}
+			break;
 		}
 
 		if (v.style && v.style.indexOf('html') < 0)
@@ -12532,7 +13487,7 @@ LucidImporter = {};
 			v.style += 'html=1;';
 		}
 		
-		if (p.Title && p.Text)
+		if (p.Title && p.Title.t && p.Text && p.Text.t)
 		{
 			try
 			{
@@ -12549,6 +13504,12 @@ LucidImporter = {};
 		}
 				
 		handleTextRotation(v, p);
+		addCustomData(v, p, graph);
+		
+		if (p.Hidden)
+		{
+			v.visible = false;
+		}
 		
 	    return v;
 	};
@@ -12559,9 +13520,9 @@ LucidImporter = {};
 		{
 			try
 			{
-				var deg = mxUtils.toDegree(p.Text_TRotation) +  mxUtils.toDegree(p.TextRotation);
+				var deg = mxUtils.toDegree(p.Text_TRotation || 0) +  mxUtils.toDegree(p.TextRotation || 0);
 				
-				if (deg != 0 && v.value)
+				if (!isNaN(deg) && deg != 0 && v.value)
 				{
 					var w = v.geometry.width, h = v.geometry.height;
 					var lblW = w, lblH = h, x = 0, y = 0;
@@ -12570,9 +13531,9 @@ LucidImporter = {};
 					{
 						lblW = h;
 						lblH = w;
-						var diff = Math.abs(h - w) / 2;
-						x = diff / w;
-						y = -diff/ h;
+						var diff = (h - w) / 2;
+						x = -diff / w;
+						y = diff/ h;
 					}
 					
 					deg += mxUtils.toDegree(p.Rotation);
@@ -12597,94 +13558,283 @@ LucidImporter = {};
 		}
 	};
 	
-	//TODO A lot of work is still needed to build the cell, do the layout, ...
-	function createOrgChart(obj, graph, lookup, queue)
+	function createOrgChart(objId, props, data, graph, lookup)
 	{
+		function getLineTxtStyle(cellDefaultStyle, fieldName)
+		{
+			var style = '';
+			
+			try
+			{
+				for (var i = 0; i < cellDefaultStyle.text.length; i++)
+				{
+					var item = cellDefaultStyle.text[i];
+					
+					if (item[0] == 't_' + fieldName)
+					{
+						for (var key in item[1])
+						{
+							var val = item[1][key];
+							
+							if (!val) continue;
+							
+							switch(key)
+							{
+								case 'font':
+									style += mapFontFamily(val);
+								break;
+								case 'bold':
+									style += 'font-weight: bold;';
+								break;
+								case 'italic':
+									style += 'font-style: italic;';
+								break;
+								case 'underline':
+									style += 'text-decoration: underline;';
+								break;
+								case 'size':
+									style += 'font-size:' + fix1Digit(val * scale) + 'px;';
+								break;
+								case 'color':
+									style += 'color:' + rgbToHex(val).substring(0, 7) + ';';
+								break;
+								case 'fill':
+									style += 'background-color:' + rgbToHex(val).substring(0, 7) + ';';
+								break;
+								case 'align':
+									style += 'text-align:' + val + ';';
+								break;
+							}
+						}
+						
+						break;
+					}
+				}
+			}
+			catch(e){}
+			
+			return style;
+		};
+		
 		try
 		{
-			var chartType = obj.GeneratorData.p.OrgChartBlockType;
-			var fields = obj.GeneratorData.p.FieldNames;
-			var layoutSettings = obj.GeneratorData.p.LayoutSettings;
-			var cellDefaultStyle = obj.GeneratorData.p.BlockItemDefaultStyle;
-			var edgeDefaultStyle = obj.GeneratorData.p.EdgeItemDefaultStyle;
-			var chartDataSrc = obj.GeneratorData.gs.Items.n;
-			var chartData = [];
+			//TODO Cell specific styles and chartType defaults
+			var defImg = 'https://cdn4.iconfinder.com/data/icons/basic-user-interface-elements/700/user-account-profile-human-avatar-face-head--128.png';
+			var chartType = props.OrgChartBlockType;
+			var pos = props.Location;
+			var x = pos.x * scale, y = pos.y * scale;
+			var chartGroup = new mxCell('', new mxGeometry(x, y, 200, 100), 'group');
+			chartGroup.vertex = true;
+			graph.addCell(chartGroup);
+			var fields = props.FieldNames;
+			var layoutSettings = props.LayoutSettings;
+			var cellDefaultStyle = props.BlockItemDefaultStyle || {props: {}};
+			var edgeDefaultStyle = props.EdgeItemDefaultStyle;
 			var parents = {};
-			var idPrefix = Date.now() + '_';
+			var idPrefix = (objId || Date.now()) + '_';
 			
-			for (var i = 0; i < chartDataSrc.length; i++)
+			if (chartType == 4)
 			{
-				var d = chartDataSrc[i];
-				chartData.push(d.f);
-				var id = idPrefix + d.pk;
-				parents[id] = d.ie;
-				var cell = new mxCell('', new mxGeometry(0, 0, 200, 100), '');
+				cellDefaultStyle.props.LineWidth = 0;
+			}
+			
+			var txtStyles = [], marginW = 25, marginH = 40, imgSize = 54, hasImage = true, cellStyle = addAllStyles('', cellDefaultStyle.props, {}, chartGroup, true);
+			
+			if (chartType == 0) //Image top-center
+			{
+				cellStyle += 'spacingTop=' + imgSize + ';imageWidth=' + imgSize + ';imageHeight=' + imgSize + ';imageAlign=center;imageVerticalAlign=top;image=';
+				marginH += imgSize;
+			}
+			else if (chartType == 1 || chartType == 2) //Image to top-left (or outsize top-left which we don't support)
+			{
+				cellStyle += 'spacingLeft=' + imgSize + ';imageWidth=' + (imgSize - 4) + ';imageHeight=' + (imgSize - 4) + ';imageAlign=left;imageVerticalAlign=top;image=';
+				marginW += imgSize;
+			}
+			else if (chartType >= 3)
+			{
+				hasImage = false;
+			}
+			
+			for (var j = 0; j < fields.length; j++)
+			{
+				txtStyles.push(getLineTxtStyle(cellDefaultStyle, fields[j]));
+			}
+			
+			
+			function createNode(pk, pId, dObj)
+			{
+				var id = idPrefix + pk;
+				parents[id] = pId;
+				var lbl = '';
+				
+				for (var j = 0; j < fields.length; j++)
+				{
+					lbl += '<div style="' + txtStyles[j] + '">' + 
+							 (dObj[fields[j]] || '&nbsp;') + '</div>';
+				}
+				
+				var size = mxUtils.getSizeForString(lbl);
+				//TODO Is image always in Image/018__ImageUrl__?
+				var imgUrl = dObj['Image'] || dObj['018__ImageUrl__'] || defImg;
+				
+				if (LucidImporter.imgSrcRepl != null)
+				{
+					for (var i = 0; i < LucidImporter.imgSrcRepl.length; i++)
+					{
+						var repl = LucidImporter.imgSrcRepl[i];
+						imgUrl = imgUrl.replace(repl.searchVal, repl.replVal);
+					}
+				}
+				
+				var cell = new mxCell(lbl, new mxGeometry(0, 0, size.width + marginW, size.height + marginH), 
+									cellStyle + (hasImage? imgUrl : ''));
 			    cell.vertex = true;
 				lookup[id] = cell;
-				queue.push({id: id});
+				graph.addCell(cell, chartGroup);	
+			};
+			
+			if (data.Items)
+			{
+				var chartDataSrc = data.Items.n;
+				
+				for (var i = 0; i < chartDataSrc.length; i++)
+				{
+					var d = chartDataSrc[i];
+					createNode(d.pk, d.ie[0]? d.ie[0].nf : null, d.f);
+				}
+			}
+			else
+			{
+				var dataId, derivative = props.ContractMap.derivative;
+
+	 			if (derivative == null)
+				{
+					//We don't have enough samples of this format, TODO improve this
+					var people = props.ContractMap.c.People;
+					dataId = people.id;
+					dataId = dataId.substr(0, dataId.lastIndexOf('_'));
+					
+					for (var j = 0; j < fields.length; j++)
+					{
+						fields[j] = people.f[fields[j]] || fields[j];
+					}
+				}
+				else
+				{
+					for (var i = 0; i < derivative.length; i++)
+					{
+						if (derivative[i].type == 'ForeignKeyGraph')
+						{
+							dataId = derivative[i].c[0].id;
+							dataId = dataId.substr(0, dataId.lastIndexOf('_'));
+						}
+						else if (derivative[i].type == 'MappedGraph')
+						{
+							for (var j = 0; j < fields.length; j++)
+							{
+								fields[j] = derivative[i].nfs[fields[j]] || fields[j];
+							}
+						}
+					}
+				}
+				
+				var chartDataSrc, foreignKey, primaryKey;
+				
+				for (var key in data)
+				{
+					var d = data[key].Collections;
+					
+					for (var key2 in d)
+					{
+						if (key2 == dataId)
+						{
+							chartDataSrc = d[key2].Items;
+						}
+						else if (d[key2].Properties.ForeignKeys && d[key2].Properties.ForeignKeys[0])
+						{
+							foreignKey = d[key2].Properties.ForeignKeys[0].SourceFields[0];
+							primaryKey = d[key2].Properties.Schema.PrimaryKey[0];
+						}
+					}
+					
+					if (chartDataSrc)
+					{
+						break;
+					}
+				}
+				
+				var dupMap = {};
+				
+				for (var id in chartDataSrc)
+				{
+					var d = chartDataSrc[id];
+					var pk = d[primaryKey], fk = d[foreignKey];
+					
+					//Special case where these nodes has duplicate id and should be connected somehow!
+					if (pk == fk)
+					{
+						dupMap[pk] = pk + Date.now();
+						pk = dupMap[pk];
+						d[primaryKey] = pk;
+						createNode(pk, fk, d);
+					}
+					else
+					{
+						createNode(pk, dupMap[fk] || fk, d);
+					}
+				}
 			}
 			
 			for (var key in parents)
 			{
 				var p = parents[key];
 				
-				if (p[0] && p[0].nf)
+				if (p != null)
 				{
-					var src = lookup[idPrefix + p[0].nf];
+					var src = lookup[idPrefix + p];
 					var trg = lookup[key];
-					var e = new mxCell('', new mxGeometry(0, 0, 100, 100), '');
-					e.geometry.relative = true;
-					e.edge = true;
-					graph.addCell(e, null, null, src, trg);
-				}
-			}
-			
-			var chartCells = obj.GeneratorData.povs;
-			
-			if (chartCells != null)
-			{
-				for (var key in chartCells)
-				{
-					var items = chartCells[key];
 					
-					for (var i = 0; i < items.length; i++)
+					if (src != null && trg != null)
 					{
-						var item = JSON.parse(items[i]);
-						console.log(item);
-						if (key.indexOf('-line') > 0) 
+						var e = new mxCell('', new mxGeometry(0, 0, 100, 100), '');
+						e.geometry.relative = true;
+						e.edge = true;
+						
+						if (edgeDefaultStyle != null && edgeDefaultStyle.props != null)
 						{
-							//No Endpoint1 so not useful as is
-//							queue.push({
-//								id: key + i,
-//								IsLine: true,
-//								Action: {
-//									Properties: item
-//								}
-//							});
+							updateCell(e, edgeDefaultStyle.props, graph, null, null, true);
 						}
-						else
-						{
-							//Sometimes it has no boundingBox as well as being not in sync
-//							var mainKey = Object.keys(item)[0];
-//							var constItem = {
-//								"id": key + i,
-//								"IsBlock": true,
-//								"Action": {
-//									"Action": "CreateBlock",
-//									"Class": "DefaultSquareBlock",
-//									"Properties": item
-//								}
-//							};
-//							
-//							constItem.Action.Properties.Text = item[mainKey];
-//							constItem.Action.Properties.TextVAlign = item[mainKey + '_VAlign'];
-//							lookup[key + i] = createVertex(constItem, graph);
-//							queue.push(constItem);
-						}
+						
+						graph.addCell(e, chartGroup, null, src, trg);
 					}
 				}
 			}
+
+			//TODO Support other layout options like LayoutType
+			var levelSps = layoutSettings.NodeSpacing.LevelSeparation * scale;
+			var orgChartLayout = new mxOrgChartLayout(graph, 0, levelSps, layoutSettings.NodeSpacing.NeighborSeparation * scale);
+			orgChartLayout.execute(chartGroup);
+			
+			//Find out the group size and
+			var maxX = 0, maxY = 0;
+			
+			for (var i = 0; chartGroup.children && i < chartGroup.children.length; i++)
+			{
+				var geo = chartGroup.children[i].geometry;
+				maxX = Math.max(maxX, geo.x + geo.width);
+				maxY = Math.max(maxY, geo.y + geo.height); 
+			}
+			
+			var gGeo = chartGroup.geometry;
+			gGeo.y -= levelSps; //Our org chart layout leave a space on top
+			gGeo.width = maxX;
+			gGeo.height = maxY;
 		}
-		catch(e){}
+		catch(e)
+		{
+			LucidImporter.hasUnknownShapes = true;
+			LucidImporter.hasOrgChart = true;
+			console.log(e);
+		}
 	};
 })();

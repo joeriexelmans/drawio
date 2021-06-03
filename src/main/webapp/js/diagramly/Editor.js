@@ -9,15 +9,15 @@
 		/**
 		 * Enables paste from Lucidchart
 		 */
-		html4.ATTRIBS["span::data-lucid-content"] = 0;
-		html4.ATTRIBS["span::data-lucid-type"] = 0;
+		html4.ATTRIBS['span::data-lucid-content'] = 0;
+		html4.ATTRIBS['span::data-lucid-type'] = 0;
 		
 		/**
 		 * Enables custom fonts in labels.
 		 */
 		html4.ATTRIBS['font::data-font-src'] = 0;
 	}
-	
+
 	/**
 	 * Specifies the app name. Default is document.title.
 	 */
@@ -194,6 +194,21 @@
 	Editor.svgBrokenImage = Graph.createSvgImage(10, 10, '<rect x="0" y="0" width="10" height="10" stroke="#000" fill="transparent"/><path d="m 0 0 L 10 10 L 0 10 L 10 0" stroke="#000" fill="transparent"/>');
 
 	/**
+	 * Error image for not found images
+	 */	
+	Editor.errorImage = 'data:image/gif;base64,R0lGODlhEAAQAPcAAADGAIQAAISEhP8AAP///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////yH5BAEAAAAALAAAAAAQABAAAAhoAAEIFBigYMGBCAkGGMCQ4cGECxtKHBAAYUQCEzFSHLiQgMeGHjEGEAAg4oCQJz86LCkxpEqHAkwyRClxpEyXGmGaREmTIsmOL1GO/DkzI0yOE2sKIMlRJsWhCQHENDiUaVSpS5cmDAgAOw==';
+	
+	/**
+	 * Error image for not found images
+	 */	
+	Editor.configurationKey = '.configuration';
+		
+	/**
+	 * Error image for not found images
+	 */	
+	Editor.settingsKey = '.drawio-config';
+	
+	/**
 	 * Default value for custom libraries in mxSettings.
 	 */
 	Editor.defaultCustomLibraries = [];
@@ -345,8 +360,11 @@
         {name: 'movable', dispName: 'Movable', type: 'bool', defVal: true},
         {name: 'cloneable', dispName: 'Cloneable', type: 'bool', defVal: true},
         {name: 'deletable', dispName: 'Deletable', type: 'bool', defVal: true},
+        {name: 'noJump', dispName: 'No Jumps', type: 'bool', defVal: false},
+        {name: 'flowAnimation', dispName: 'Flow Animation', type: 'bool', defVal: false},
+		{name: 'ignoreEdge', dispName: 'Ignore Edge', type: 'bool', defVal: false},
         {name: 'orthogonalLoop', dispName: 'Loop Routing', type: 'bool', defVal: false},
-        {name: 'noJump', dispName: 'No Jumps', type: 'bool', defVal: false}
+		{name: 'orthogonal', dispName: 'Orthogonal', type: 'bool', defVal: false}
 	].concat(Editor.commonProperties);
 
 	/**
@@ -416,7 +434,8 @@
         			{val: 'hexagonPerimeter2', dispName: 'Hexagon'}, {val: 'lifelinePerimeter', dispName: 'Lifeline'},
         			{val: 'orthogonalPerimeter', dispName: 'Orthogonal'}, {val: 'backbonePerimeter', dispName: 'Backbone'},
         			{val: 'calloutPerimeter', dispName: 'Callout'}, {val: 'parallelogramPerimeter', dispName: 'Parallelogram'},
-        			{val: 'trapezoidPerimeter', dispName: 'Trapezoid'}, {val: 'stepPerimeter', dispName: 'Step'}]
+        			{val: 'trapezoidPerimeter', dispName: 'Trapezoid'}, {val: 'stepPerimeter', dispName: 'Step'},
+        			{val: 'centerPerimeter', dispName: 'Center'}]
         },
         {name: 'fixDash', dispName: 'Fixed Dash', type: 'bool', defVal: false},
         {name: 'autosize', dispName: 'Autosize', type: 'bool', defVal: false},
@@ -559,10 +578,14 @@
 		'## An optional placeholders can be set to target to use data from the target instead.\n' +
 		'## In addition to label, an optional fromlabel and tolabel can be used to name the column\n' +
 		'## that contains the text for the label in the edges source or target (invert ignored).\n' +
-		'## The label is concatenated in the form fromlabel + label + tolabel if all are defined.\n' +
+		'## In addition to those, an optional source and targetlabel can be used to specify a label\n' +
+		'## that contains placeholders referencing the respective columns in the source or target row.\n' +
+		'## The label is created in the form fromlabel + sourcelabel + label + tolabel + targetlabel.\n' +
 		'## Additional labels can be added by using an optional labels array with entries of the\n' +
 		'## form {"label": string, "x": number, "y": number, "dx": number, "dy": number} where\n' +
 		'## x is from -1 to 1 along the edge, y is orthogonal, and dx/dy are offsets in pixels.\n' +
+		'## An optional placeholders with the string value "source" or "target" can be specified\n' +
+		'## to replace placeholders in the additional label with data from the source or target.\n' +
 		'## The target column may contain a comma-separated list of values.\n' +
 		'## Multiple connect entries are allowed.\n' +
 		'#\n' +
@@ -641,7 +664,7 @@
 				return c;
 			}
 		});
-	
+		
 		rc.draw = function(drawable)
 		{
 			var sets = drawable.sets || [];
@@ -821,7 +844,7 @@
 				}
 			}
 
-			var style = {strokeWidth: this.canvas.state.strokeWidth, seed: seed};
+			var style = {strokeWidth: this.canvas.state.strokeWidth, seed: seed, preserveVertices: true};
 			var defs = this.rc.getDefaultOptions();
 			
 			if (stroke)
@@ -1191,29 +1214,15 @@
 		var shapePaint = mxShape.prototype.paint;
 		mxShape.prototype.paint = function(c)
 		{
-			var fillStyle = null;
+			var addTolerance = c.addTolerance;
 			var events = true;
 			
 			if (this.style != null)
 			{
 				events = mxUtils.getValue(this.style, mxConstants.STYLE_POINTER_EVENTS, '1') == '1';
-				fillStyle = mxUtils.getValue(this.style, 'fillStyle', 'auto');
-				
-				if (this.state != null && fillStyle == 'auto')
-				{
-					var bg = this.state.view.graph.defaultPageBackgroundColor;
-					
-					if (this.fill != null && (this.gradient != null || (bg != null &&
-						this.fill.toLowerCase() == bg.toLowerCase())))
-					{
-						fillStyle = 'solid';
-					}
-				}
 			}
 			
-			if (events && c.handJiggle != null && c.handJiggle.constructor == RoughCanvas &&
-				!this.outline && (this.fill == null || this.fill == mxConstants.NONE ||
-				fillStyle != 'solid'))
+			if (c.handJiggle != null && c.handJiggle.constructor == RoughCanvas && !this.outline)
 			{
 				// Save needed for possible transforms applied during paint
 				c.save();
@@ -1221,17 +1230,73 @@
 				var stroke = this.stroke;
 				this.fill = null;
 				this.stroke = null;
+				
+				var configurePointerEvents = this.configurePointerEvents;
+				
+				// Ignores color changes during paint
+				var setStrokeColor = c.setStrokeColor;
+				
+				c.setStrokeColor = function()
+				{
+					// ignore
+				};
+		
+				var setFillColor = c.setFillColor;
+				
+				c.setFillColor = function()
+				{
+					// ignore
+				};
+				
+				// Adds stroke tolerance for plain rendering if filled
+				if (!events && fill != null)
+				{
+					this.configurePointerEvents = function()
+					{
+						// ignore
+					};
+				}
+				
 				c.handJiggle.passThrough = true;
 
 				shapePaint.apply(this, arguments);
 
 				c.handJiggle.passThrough = false;
-				this.fill = fill;
+				c.setFillColor = setFillColor;
+				c.setStrokeColor = setStrokeColor;
+				this.configurePointerEvents = configurePointerEvents;
 				this.stroke = stroke;
+				this.fill = fill;
 				c.restore();
+				
+				// Bypasses stroke tolerance for sketched rendering if filled
+				if (events && fill != null)
+				{
+					c.addTolerance = function()
+					{
+						// ignore	
+					};
+				}
 			}
 			
 			shapePaint.apply(this, arguments);
+			c.addTolerance = addTolerance;
+		};
+
+		// Overrides glass effect to disable sketch style
+		var shapePaintGlassEffect = mxShape.prototype.paintGlassEffect;
+		mxShape.prototype.paintGlassEffect = function(c, x, y, w, h, arc)
+		{
+			if (c.handJiggle != null && c.handJiggle.constructor == RoughCanvas)
+			{
+				c.handJiggle.passThrough = true;
+				shapePaintGlassEffect.apply(this, arguments);
+				c.handJiggle.passThrough = false;
+			}
+			else
+			{
+				shapePaintGlassEffect.apply(this, arguments);
+			}
 		};
 	})();
 
@@ -1246,7 +1311,7 @@
 		}
 		else
 		{
-			return pako.deflateRaw(data, {to: 'string'});
+			return Graph.arrayBufferToString(pako.deflateRaw(data));
 		}
 	};
 
@@ -1261,7 +1326,7 @@
 		}
 		else
 		{
-			return pako.inflateRaw(data, {to: 'string'});
+			return pako.inflateRaw(Graph.stringToArrayBuffer(atob(data)), {to: 'string'});
 		}
 	};
 
@@ -1438,6 +1503,29 @@
 
 		// Workaround for invalid character error in Safari
 		var f = (window.atob && !mxClient.IS_SF) ? atob(base64) : Base64.decode(base64, true);
+		
+		//The new format of embedding diagram XML as embedded file (attachment) is in PDF 1.7
+		if (f.substring(0, 8) == '%PDF-1.7')
+		{
+			var blockStart = f.indexOf('EmbeddedFile'); 
+			
+			if (blockStart > -1)
+			{
+				var streamStart = f.indexOf('stream', blockStart) + 9; //the start of the stream [skipping header check]
+				var fileInfo = f.substring(blockStart, streamStart);
+				
+				if (fileInfo.indexOf('application#2Fvnd.jgraph.mxfile') > 0)
+				{
+					var streamEnd = f.indexOf('endstream', streamStart - 1);
+				
+					return pako.inflateRaw(Graph.stringToArrayBuffer(f.substring(streamStart, streamEnd)), {to: 'string'});
+				}
+			}
+			
+			//Not found
+			return null;
+		}
+		
 		var check = '/Subject (%3Cmxfile';
 		var result = null;
 		var curline = '';
@@ -1585,8 +1673,8 @@
 					if (value.substring(0, idx) == 'mxGraphModel')
 					{
 						// Workaround for Java URL Encoder using + for spaces, which isn't compatible with JS
-						var xmlData = pako.inflateRaw(value.substring(idx + 2),
-							{to: 'string'}).replace(/\+/g,' ');
+						var xmlData = pako.inflateRaw(Graph.stringToArrayBuffer(
+							value.substring(idx + 2)), {to: 'string'}).replace(/\+/g,' ');
 						
 						if (xmlData != null && xmlData.length > 0)
 						{
@@ -1711,6 +1799,11 @@
 				Editor.compressXml = config.compressXml;
 			}
 			
+			if (config.simpleLabels != null)
+			{
+				Editor.simpleLabels = config.simpleLabels;
+			}
+			
 			if (config.customFonts)
 			{
 				Menus.prototype.defaultFonts = config.customFonts.
@@ -1780,6 +1873,28 @@
 			if (config.defaultEdgeStyle != null)
 			{
 				Graph.prototype.defaultEdgeStyle = config.defaultEdgeStyle;
+			}
+
+			// Overrides zoom factor
+			if (config.zoomFactor != null)
+			{
+				var val = parseFloat(config.zoomFactor);
+				
+				if (!isNaN(val) && val > 1)
+				{
+					Graph.prototype.zoomFactor = val;
+				}
+			}
+
+			// Overrides grid steps
+			if (config.gridSteps != null)
+			{
+				var val = parseInt(config.gridSteps);
+				
+				if (!isNaN(val) && val > 0)
+				{
+					mxGraphView.prototype.gridSteps = val;
+				}
 			}
 			
 			if (config.emptyDiagramXml)
@@ -2050,6 +2165,10 @@
 						console.log('ExtFonts format error: ' + e.message);
 					}
 				}
+				else if (this.graph.extFonts != null && this.graph.extFonts.length > 0)
+				{
+					this.graph.extFonts = [];
+				}
 			}
 	
 			// Calls updateGraphComponents
@@ -2183,140 +2302,140 @@
 			this.graph.isCssTransformsSupported();
 		this.graph.updateCssTransform();
 	};
+	
+	/**
+	 * Overrides relative position to fix clipping bug in Webkit.
+	 */
+	Editor.mathJaxWebkitCss = 'div.MathJax_SVG_Display { position: static; }\n' +
+		'span.MathJax_SVG { position: static !important; }';
 		
 	/**
 	 * Initializes math typesetting and loads respective code.
 	 */
 	Editor.initMath = function(src, config)
 	{
-		src = (src != null) ? src : DRAW_MATH_URL + '/MathJax.js';
-		Editor.mathJaxQueue = [];
-
-		Editor.doMathJaxRender = function(container)
+		if (typeof(window.MathJax) === 'undefined')
 		{
-			window.setTimeout(function()
-			{
-				if (container.style.visibility != 'hidden')
-				{
-					MathJax.Hub.Queue(['Typeset', MathJax.Hub, container]);
-				}
-			}, 0);
-		};
-		
-		var font = (urlParams['math-font'] != null) ?
-			decodeURIComponent(urlParams['math-font']) :
-			'TeX';
-		
-		config = (config != null) ? config :
-		{
-			jax: ['input/TeX', 'input/MathML', 'input/AsciiMath'].concat(
-				[(urlParams['math-output'] == 'html') ?
-					'output/HTML-CSS' : 'output/SVG']),
-			extensions: ['tex2jax.js', 'mml2jax.js', 'asciimath2jax.js'],
-			TeX: {
-				extensions: ['AMSmath.js', 'AMSsymbols.js', 'noErrors.js', 'noUndefined.js']
-			},
-			'HTML-CSS': {
-				availableFonts: [font],
-				imageFont: null
-			},
-			SVG: {
-				font: font,
-				// Needed for client-side export to work
-				useFontCache: false
-			},
-			// Ignores math in in-place editor
-			tex2jax: {
-				ignoreClass: 'mxCellEditor'
-		  	},
-		  	asciimath2jax: {
-				ignoreClass: 'mxCellEditor'
-		  	}
-		};
-
-		// Disables global typesetting and messages on startup, adds queue for
-		// asynchronous rendering while MathJax is loading
-		window.MathJax =
-		{
-			skipStartupTypeset: true,
-			showMathMenu: false,
-			messageStyle: 'none',
-			AuthorInit: function ()
-			{
-				MathJax.Hub.Config(config);
-				
-				MathJax.Hub.Register.StartupHook('Begin', function()	
-				{	
-					for (var i = 0; i < Editor.mathJaxQueue.length; i++)	
-					{	
-						Editor.doMathJaxRender(Editor.mathJaxQueue[i]);	
-					}	
-				});
-		    }
-		};
-
-		// Adds global enqueue method for async rendering
-		Editor.MathJaxRender = function(container)
-		{
-			// Initial rendering when MathJax finished loading
-			if (typeof(MathJax) !== 'undefined' && typeof(MathJax.Hub) !== 'undefined')
-			{
-				Editor.doMathJaxRender(container);
-			}
-			else
-			{
-				Editor.mathJaxQueue.push(container);
-			}
-		};
-
-		// Adds global clear queue method
-		Editor.MathJaxClear = function()
-		{
+			src = ((src != null) ? src : DRAW_MATH_URL + '/MathJax.js') + '?config=TeX-MML-AM_' +
+				((urlParams['math-output'] == 'html') ? 'HTMLorMML' : 'SVG') + '-full';
 			Editor.mathJaxQueue = [];
-		};
-		
-		// Updates math typesetting after changes
-		var editorInit = Editor.prototype.init;
-		
-		Editor.prototype.init = function()
-		{
-			editorInit.apply(this, arguments);
-			
-			this.graph.addListener(mxEvent.SIZE, mxUtils.bind(this, function(sender, evt)
+
+			Editor.doMathJaxRender = function(container)
 			{
-				if (this.graph.container != null && this.graph.mathEnabled && !this.graph.blockMathRender)
+				window.setTimeout(function()
 				{
-					Editor.MathJaxRender(this.graph.container);
-				}
-			}));
-		};
-		
-		var tags = document.getElementsByTagName('script');
-		
-		if (tags != null && tags.length > 0)
-		{
-			var s = document.createElement('script');
-			s.setAttribute('type', 'text/javascript');
-			s.setAttribute('src', src);
+					if (container.style.visibility != 'hidden')
+					{
+						MathJax.Hub.Queue(['Typeset', MathJax.Hub, container]);
+					}
+				}, 0);
+			};
 			
-			tags[0].parentNode.appendChild(s);
-		}
-		
-		// Overrides position relative for block elements to fix
-		// zoomed math clipping in Webkit (drawio/issues/1213)
-		try
-		{
-			if (mxClient.IS_GC || mxClient.IS_SF)
+			var font = (urlParams['math-font'] != null) ?
+				decodeURIComponent(urlParams['math-font']) : 'TeX';
+			
+			config = (config != null) ? config :
 			{
-				var style = document.createElement('style')
-				style.type = 'text/css';
-				style.innerHTML = 'div.MathJax_SVG_Display { position: static; }';
-				document.getElementsByTagName('head')[0].appendChild(style);
+				'HTML-CSS': {
+					availableFonts: [font],
+					imageFont: null
+				},
+				SVG: {
+					font: font,
+					// Needed for client-side export to work
+					useFontCache: false
+				},
+				// Ignores math in in-place editor
+				tex2jax: {
+					ignoreClass: 'mxCellEditor'
+				},
+				asciimath2jax: {
+					ignoreClass: 'mxCellEditor'
+				}
+			};
+
+			// Disables global typesetting and messages on startup, adds queue for
+			// asynchronous rendering while MathJax is loading
+			window.MathJax =
+			{
+				skipStartupTypeset: true,
+				showMathMenu: false,
+				messageStyle: 'none',
+				AuthorInit: function ()
+				{
+					MathJax.Hub.Config(config);
+					
+					MathJax.Hub.Register.StartupHook('Begin', function()	
+					{	
+						for (var i = 0; i < Editor.mathJaxQueue.length; i++)	
+						{	
+							Editor.doMathJaxRender(Editor.mathJaxQueue[i]);	
+						}	
+					});
+				}
+			};
+
+			// Adds global enqueue method for async rendering
+			Editor.MathJaxRender = function(container)
+			{
+				// Initial rendering when MathJax finished loading
+				if (typeof(MathJax) !== 'undefined' && typeof(MathJax.Hub) !== 'undefined')
+				{
+					Editor.doMathJaxRender(container);
+				}
+				else
+				{
+					Editor.mathJaxQueue.push(container);
+				}
+			};
+
+			// Adds global clear queue method
+			Editor.MathJaxClear = function()
+			{
+				Editor.mathJaxQueue = [];
+			};
+			
+			// Updates math typesetting after changes
+			var editorInit = Editor.prototype.init;
+			
+			Editor.prototype.init = function()
+			{
+				editorInit.apply(this, arguments);
+				
+				this.graph.addListener(mxEvent.SIZE, mxUtils.bind(this, function(sender, evt)
+				{
+					if (this.graph.container != null && this.graph.mathEnabled && !this.graph.blockMathRender)
+					{
+						Editor.MathJaxRender(this.graph.container);
+					}
+				}));
+			};
+			
+			var tags = document.getElementsByTagName('script');
+			
+			if (tags != null && tags.length > 0)
+			{
+				var s = document.createElement('script');
+				s.setAttribute('type', 'text/javascript');
+				s.setAttribute('src', src);
+				tags[0].parentNode.appendChild(s);
 			}
-		}
-		catch (e)
-		{
-	       	// ignore
+			
+			// Workaround for zoomed math clipping in Webkit
+			try
+			{
+				if (mxClient.IS_GC || mxClient.IS_SF)
+				{
+					var style = document.createElement('style')
+					style.type = 'text/css';
+					style.innerHTML = Editor.mathJaxWebkitCss;
+					document.getElementsByTagName('head')[0].appendChild(style);
+				}
+			}
+			catch (e)
+			{
+				// ignore
+			}
 		}
 	};
 
@@ -3090,7 +3209,7 @@
 	 */
 	Editor.prototype.exportToCanvas = function(callback, width, imageCache, background, error, limitHeight,
 		ignoreSelection, scale, transparentBackground, addShadow, converter, graph, border, noCrop, grid,
-		keepTheme)
+		keepTheme, exportType, cells)
 	{
 		try
 		{
@@ -3118,7 +3237,8 @@
 			}
 			
 			this.convertImages(graph.getSvg(null, null, border, noCrop, null, ignoreSelection,
-				null, null, null, addShadow, null, keepTheme), mxUtils.bind(this, function(svgRoot)
+				null, null, null, addShadow, null, keepTheme, exportType, cells),
+				mxUtils.bind(this, function(svgRoot)
 			{
 				try
 				{
@@ -3167,13 +3287,13 @@
 									window.setTimeout(function()
 									{
 										ctx.drawImage(img, 0, 0);
-										callback(canvas);
+										callback(canvas, svgRoot);
 									}, 0);
 						   		}
 						   		else
 						   		{
 						   			ctx.drawImage(img, 0, 0);
-						   			callback(canvas);
+						   			callback(canvas, svgRoot);
 						   		}
 						    };
 						    
@@ -3474,7 +3594,7 @@
 	 */
 	if (window.ColorDialog)
 	{
-		FilenameDialog.filenameHelpLink = 'https://desk.draw.io/support/solutions/articles/16000091426'; 
+		FilenameDialog.filenameHelpLink = 'https://www.diagrams.net/doc/faq/save-file-formats'; 
 		
 		var colorDialogAddRecentColor = ColorDialog.addRecentColor;
 		
@@ -4134,8 +4254,8 @@
 			{fill: '#0050ef', stroke: '#001DBC', font: '#ffffff'}, {fill: '#6a00ff', stroke: '#3700CC', font: '#ffffff'},
 			//{fill: '#aa00ff', stroke: '#7700CC', font: '#ffffff'},
 			{fill: '#d80073', stroke: '#A50040', font: '#ffffff'}, {fill: '#a20025', stroke: '#6F0000', font: '#ffffff'}],
-			[{fill: '#e51400', stroke: '#B20000', font: '#ffffff'}, {fill: '#fa6800', stroke: '#C73500', font: '#ffffff'},
-			{fill: '#f0a30a', stroke: '#BD7000', font: '#ffffff'}, {fill: '#e3c800', stroke: '#B09500', font: '#ffffff'},
+			[{fill: '#e51400', stroke: '#B20000', font: '#ffffff'}, {fill: '#fa6800', stroke: '#C73500', font: '#000000'},
+			{fill: '#f0a30a', stroke: '#BD7000', font: '#000000'}, {fill: '#e3c800', stroke: '#B09500', font: '#000000'},
 			{fill: '#6d8764', stroke: '#3A5431', font: '#ffffff'}, {fill: '#647687', stroke: '#314354', font: '#ffffff'},
 			{fill: '#76608a', stroke: '#432D57', font: '#ffffff'}, {fill: '#a0522d', stroke: '#6D1F00', font: '#ffffff'}],
 			[{fill: '', stroke: ''}, {fill: mxConstants.NONE, stroke: ''},
@@ -4636,6 +4756,15 @@
 				{
 					td.appendChild(createStaticArrList(pName, pValue, prop.subType, prop.subDefVal, prop.size, row, flipBkg));
 				}
+				else if (pType == 'readOnly')
+				{
+					var inp = document.createElement('input');
+					inp.setAttribute('readonly', '');
+					inp.value = pValue;
+					inp.style.width = '96px';
+					inp.style.borderWidth = '0px';
+					td.appendChild(inp);
+				}
 				else
 				{
 					td.innerHTML = pValue;
@@ -4807,6 +4936,23 @@
 			
 			var isOdd = false;
 			var flipBkg = false;
+			
+			var cellId = null;
+			
+			if (state.vertices.length == 1 && state.edges.length == 0)
+			{
+				cellId = state.vertices[0].id;
+			}
+			else if (state.vertices.length == 0 && state.edges.length == 1)
+			{
+				cellId = state.edges[0].id;
+			}
+			
+			//Add it to top (always)
+			if (cellId != null)
+			{
+				grid.appendChild(createPropertyRow('id', mxUtils.htmlEntities(cellId), {dispName: 'ID', type: 'readOnly'}, true, false));
+			}
 			
 			for (var key in properties)
 			{
@@ -5032,9 +5178,11 @@
 					
 					if (colorset != null)
 					{
+						var b = (urlParams['sketch'] == '1') ? '2px solid' : '1px solid';
+						
 						if (colorset['gradient'] != null)
 						{
-							if (mxClient.IS_IE && (mxClient.IS_QUIRKS || document.documentMode < 10))
+							if (mxClient.IS_IE && (document.documentMode < 10))
 							{
 						    	btn.style.filter = 'progid:DXImageTransform.Microsoft.Gradient('+
 				                	'StartColorStr=\'' + colorset['fill'] +
@@ -5053,27 +5201,27 @@
 						else if (colorset['fill'] == '')
 						{
 							btn.style.backgroundColor = mxUtils.getValue(ui.initialDefaultVertexStyle,
-								mxConstants.STYLE_FILLCOLOR, (uiTheme == 'dark') ?'#2a2a2a' : '#ffffff');
+								mxConstants.STYLE_FILLCOLOR, (Editor.isDarkMode()) ?'#2a2a2a' : '#ffffff');
 						}
 						else
 						{
 							btn.style.backgroundColor = colorset['fill'] || mxUtils.getValue(ui.initialDefaultVertexStyle,
-								mxConstants.STYLE_FILLCOLOR, (uiTheme == 'dark') ?'#2a2a2a' : '#ffffff');
+								mxConstants.STYLE_FILLCOLOR, (Editor.isDarkMode()) ?'#2a2a2a' : '#ffffff');
 						}
 						
 						if (colorset['stroke'] == mxConstants.NONE)
 						{
-							btn.style.border = '1px solid transparent';
+							btn.style.border = b + ' transparent';
 						}
 						else if (colorset['stroke'] == '')
 						{
-							btn.style.border = '1px solid ' + mxUtils.getValue(ui.initialDefaultVertexStyle, 
-								mxConstants.STYLE_STROKECOLOR, (uiTheme != 'dark') ?'#2a2a2a' : '#ffffff');
+							btn.style.border = b + ' ' + mxUtils.getValue(ui.initialDefaultVertexStyle, 
+								mxConstants.STYLE_STROKECOLOR, (!Editor.isDarkMode()) ?'#2a2a2a' : '#ffffff');
 						}
 						else
 						{
-							btn.style.border = '1px solid ' + (colorset['stroke'] || mxUtils.getValue(ui.initialDefaultVertexStyle,
-									mxConstants.STYLE_STROKECOLOR, (uiTheme != 'dark') ?'#2a2a2a' : '#ffffff'));
+							btn.style.border = b + ' ' + (colorset['stroke'] || mxUtils.getValue(ui.initialDefaultVertexStyle,
+									mxConstants.STYLE_STROKECOLOR, (!Editor.isDarkMode()) ?'#2a2a2a' : '#ffffff'));
 						}
 					}
 					else
@@ -5084,6 +5232,8 @@
 						btn.style.backgroundColor = bg;
 						btn.style.border = '1px solid ' + bd;
 					}
+					
+					btn.style.borderRadius = '0';
 					
 					picker.appendChild(btn);
 				});
@@ -5103,7 +5253,7 @@
 
 			if (this.format.currentScheme == null)
 			{
-				setScheme((uiTheme == 'dark') ? 1 : 0);
+				setScheme(Editor.isDarkMode() ? 1 : (urlParams['sketch'] == '1' ? 5 : 0));
 			}
 			else
 			{
@@ -5290,7 +5440,7 @@
 	/**
 	 * Adds a font to the document.
 	 */
-	Graph.addFont = function(name, url)
+	Graph.addFont = function(name, url, callback)
 	{
 		if (name != null && name.length > 0 && url != null && url.length > 0)
 		{
@@ -5323,14 +5473,39 @@
 					Graph.recentCustomFonts[key] = entry;
 					var head = document.getElementsByTagName('head')[0];
 					
+					if (callback != null)
+					{
+						if (entry.elt.nodeName.toLowerCase() == 'link')
+						{
+							entry.elt.onload = callback;
+							entry.elt.onerror = callback;
+						}
+						else
+						{
+							callback();
+						}
+					}
+						
 					if (head != null)
 					{
 						head.appendChild(entry.elt);
 					}
 				}
+				else if (callback != null)
+				{
+					callback();
+				}
+			}
+			else if (callback != null)
+			{
+				callback();
 			}
 		}
-		
+		else if (callback != null)
+		{
+			callback();
+		}
+				
 		return name;
 	};
 
@@ -5475,34 +5650,6 @@
 		function setMouseEvent(evt)
 		{
 			mouseEvent = evt;
-			
-			// Workaround for member not found in IE8-
-			try
-			{
-				if (mxClient.IS_QUIRKS || document.documentMode == 7 || document.documentMode == 8)
-				{
-					mouseEvent = document.createEventObject(evt);
-					mouseEvent.type = evt.type;
-					mouseEvent.canBubble = evt.canBubble;
-					mouseEvent.cancelable = evt.cancelable;
-					mouseEvent.view = evt.view;
-					mouseEvent.detail = evt.detail;
-					mouseEvent.screenX = evt.screenX;
-					mouseEvent.screenY = evt.screenY;
-					mouseEvent.clientX = evt.clientX;
-					mouseEvent.clientY = evt.clientY;
-					mouseEvent.ctrlKey = evt.ctrlKey;
-					mouseEvent.altKey = evt.altKey;
-					mouseEvent.shiftKey = evt.shiftKey;
-					mouseEvent.metaKey = evt.metaKey;
-					mouseEvent.button = evt.button;
-					mouseEvent.relatedTarget = evt.relatedTarget;
-				}
-			}
-			catch (e)
-			{
-				// ignores possible event cloning errors
-			}
 		};
 		
 		mxEvent.addListener(this.container, 'mouseenter', setMouseEvent);
@@ -5787,13 +5934,17 @@
 	var graphGetSvg = Graph.prototype.getSvg;
 	
 	Graph.prototype.getSvg = function(background, scale, border, nocrop, crisp,
-		ignoreSelection, showText, imgExport, linkTarget, hasShadow, incExtFonts, keepTheme)
+		ignoreSelection, showText, imgExport, linkTarget, hasShadow,
+		incExtFonts, keepTheme, exportType, cells)
 	{
 		var temp = null;
+		var tempBg = null;
 		
 		if (!keepTheme && this.themes != null && this.defaultThemeName == 'darkTheme')
 		{
 			temp = this.stylesheet;
+			tempBg = this.defaultPageBackgroundColor;
+			this.defaultPageBackgroundColor = this.defaultThemeName == 'darkTheme' ? '#ffffff' : '#2a2a2a';
 			this.stylesheet = this.getDefaultStylesheet();
 			// LATER: Fix math export in dark mode by fetching text nodes before
 			// calling refresh and changing the font color in-place
@@ -5836,6 +5987,7 @@
 		
 		if (temp != null)
 		{
+			this.defaultPageBackgroundColor = tempBg;
 			this.stylesheet = temp;
 			this.refresh();
 		}
@@ -6565,7 +6717,8 @@
 	
 	mxStencilRegistry.libraries['arrows2'] = [SHAPES_PATH + '/mxArrows.js'];
 	mxStencilRegistry.libraries['atlassian'] = [STENCIL_PATH + '/atlassian.xml', SHAPES_PATH + '/mxAtlassian.js'];
-	mxStencilRegistry.libraries['bpmn'] = [SHAPES_PATH + '/bpmn/mxBpmnShape2.js', STENCIL_PATH + '/bpmn.xml'];
+	mxStencilRegistry.libraries['bpmn'] = [SHAPES_PATH + '/mxBasic.js', STENCIL_PATH + '/bpmn.xml', SHAPES_PATH + '/bpmn/mxBpmnShape2.js'];
+	mxStencilRegistry.libraries['bpmn2'] = [SHAPES_PATH + '/mxBasic.js', STENCIL_PATH + '/bpmn.xml', SHAPES_PATH + '/bpmn/mxBpmnShape2.js'];
 	mxStencilRegistry.libraries['c4'] = [SHAPES_PATH + '/mxC4.js'];
 	mxStencilRegistry.libraries['cisco19'] = [SHAPES_PATH + '/mxCisco19.js', STENCIL_PATH + '/cisco19.xml'];
 	mxStencilRegistry.libraries['cisco_safe'] = [SHAPES_PATH + '/mxCiscoSafe.js', STENCIL_PATH + '/cisco_safe/architecture.xml', STENCIL_PATH + '/cisco_safe/business_icons.xml', STENCIL_PATH + '/cisco_safe/capability.xml', STENCIL_PATH + '/cisco_safe/design.xml', STENCIL_PATH + '/cisco_safe/iot_things_icons.xml', STENCIL_PATH + '/cisco_safe/people_places_things_icons.xml', STENCIL_PATH + '/cisco_safe/security_icons.xml', STENCIL_PATH + '/cisco_safe/technology_icons.xml', STENCIL_PATH + '/cisco_safe/threat.xml'];
@@ -6581,10 +6734,11 @@
 	mxStencilRegistry.libraries['ios7icons'] = [STENCIL_PATH + '/ios7/icons.xml'];
 	mxStencilRegistry.libraries['ios7ui'] = [SHAPES_PATH + '/ios7/mxIOS7Ui.js', STENCIL_PATH + '/ios7/misc.xml'];
 	mxStencilRegistry.libraries['android'] = [SHAPES_PATH + '/mxAndroid.js', STENCIL_PATH + '/android/android.xml'];
-	mxStencilRegistry.libraries['electrical/miscellaneous'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/miscellaneous.xml'];
-	mxStencilRegistry.libraries['electrical/transmission'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/transmission.xml'];
-	mxStencilRegistry.libraries['electrical/logic_gates'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/logic_gates.xml'];
 	mxStencilRegistry.libraries['electrical/abstract'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/abstract.xml'];
+	mxStencilRegistry.libraries['electrical/logic_gates'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/logic_gates.xml'];
+	mxStencilRegistry.libraries['electrical/miscellaneous'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/miscellaneous.xml'];
+	mxStencilRegistry.libraries['electrical/signal_sources'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/signal_sources.xml'];
+	mxStencilRegistry.libraries['electrical/transmission'] = [SHAPES_PATH + '/mxElectrical.js', STENCIL_PATH + '/electrical/transmission.xml'];
 	mxStencilRegistry.libraries['infographic'] = [SHAPES_PATH + '/mxInfographic.js'];
 	mxStencilRegistry.libraries['mockup/buttons'] = [SHAPES_PATH + '/mockup/mxMockupButtons.js'];
 	mxStencilRegistry.libraries['mockup/containers'] = [SHAPES_PATH + '/mockup/mxMockupContainers.js'];
@@ -6608,6 +6762,7 @@
 	mxStencilRegistry.libraries['aws3d'] = [SHAPES_PATH + '/mxAWS3D.js', STENCIL_PATH + '/aws3d.xml'];
 	mxStencilRegistry.libraries['aws4'] = [SHAPES_PATH + '/mxAWS4.js', STENCIL_PATH + '/aws4.xml'];
 	mxStencilRegistry.libraries['aws4b'] = [SHAPES_PATH + '/mxAWS4.js', STENCIL_PATH + '/aws4.xml'];
+	mxStencilRegistry.libraries['uml25'] = [SHAPES_PATH + '/mxUML25.js'];
 	mxStencilRegistry.libraries['veeam'] = [STENCIL_PATH + '/veeam/2d.xml', STENCIL_PATH + '/veeam/3d.xml', STENCIL_PATH + '/veeam/veeam.xml'];
 	mxStencilRegistry.libraries['veeam2'] = [STENCIL_PATH + '/veeam/2d.xml', STENCIL_PATH + '/veeam/3d.xml', STENCIL_PATH + '/veeam/veeam2.xml'];
 	mxStencilRegistry.libraries['pid2inst'] = [SHAPES_PATH + '/pid2/mxPidInstruments.js'];
@@ -7017,12 +7172,12 @@
 					pv.writeHead = function(doc)
 					{
 						writeHead.apply(this, arguments);
-												
-						// Fixes clipping for transformed math
+						
+						// Workaround for zoomed math clipping in Webkit
 						if (mxClient.IS_GC || mxClient.IS_SF)
 						{
 							doc.writeln('<style type="text/css">');
-							doc.writeln('div.MathJax_SVG_Display { position: static; }');
+							doc.writeln(Editor.mathJaxWebkitCss);
 							doc.writeln('</style>');
 						}
 
@@ -7096,6 +7251,10 @@
 					// Switches stylesheet for print output in dark mode
 					var temp = null;
 					
+					// Disables dashed printing of flowAnimation
+					var enableFlowAnimation = graph.enableFlowAnimation;
+					graph.enableFlowAnimation = false;
+					
 					if (graph.themes != null && graph.defaultThemeName == 'darkTheme')
 					{
 						temp = graph.stylesheet;
@@ -7105,6 +7264,9 @@
 					
 					// Generates the print output
 					pv.open(null, null, forcePageBreaks, true);
+					
+					// Restores flowAnimation
+					graph.enableFlowAnimation = enableFlowAnimation;
 					
 					// Restores the stylesheet
 					if (temp != null)
@@ -7203,7 +7365,7 @@
 
 					if (tempGraph == null)
 					{
-						tempGraph = editorUi.createTemporaryGraph(graph.stylesheet);//getStylesheet());
+						tempGraph = editorUi.createTemporaryGraph(graph.stylesheet);
 
 						// Restores graph settings that are relevant for printing
 						var pageVisible = true;

@@ -77,7 +77,7 @@
 	Sidebar.prototype.aws4 = ['Arrows', 'General Resources', 'Illustrations', 'Groups', 'Analytics', 'Application Integration', 'AR VR', 'Cost Management', 'Blockchain', 
 							  'Business Applications', 'EC2 Instance Types', 'Compute', 'Containers', 'Customer Enablement', 'Customer Engagement',
 							  'Database', 'End User Computing', 'Developer Tools', 'Game Tech', 'Internet of Things', 'IoT Things', 'IoT Resources', 'Machine Learning', 'Management Governance',
-							  'Media Services', 'Migration Transfer', 'Mobile', 'Network Content Delivery', 'Quantum Technologies', 'Robotics', 'Satellite', 'Security Identity Compliance', 'Storage'];
+							  'Media Services', 'Migration Transfer', 'Mobile', 'Network Content Delivery', 'Quantum Technologies', 'Robotics', 'Satellite', 'Serverless', 'Security Identity Compliance', 'Storage'];
 
 	Sidebar.prototype.office = ['Clouds', 'Communications', 'Concepts', 'Databases', 'Devices', 'Security', 'Servers', 'Services', 'Sites', 'Users'];
 
@@ -109,7 +109,8 @@
 	/**
 	 *
 	 */
-	Sidebar.prototype.configuration = [{id: 'general', libs: ['general', 'misc', 'advanced']}, {id: 'uml'}, {id: 'search'}, {id: 'er'},
+	Sidebar.prototype.configuration = [{id: 'general', libs: ['general', 'misc', 'advanced']},
+									   {id: 'uml'}, {id: 'uml25'}, {id: 'search'}, {id: 'er'},
 									   {id: 'azure2', prefix: 'azure2', libs: ['AI Machine Learning', 'Analytics', 'App Services', 'Azure Stack', 'Azure VMware Solution', 'Blockchain', 'Compute', 'Containers', 'CXP', 'Databases', 'DevOps', 'General', 'Identity', 'Integration', 'Internet of Things', 'Intune', 'IoT', 'Management Governance', 'Migrate', 'Mixed Reality', 'Monitor', 'Networking', 'Other', 'Preview', 'Security', 'Storage', 'Web']},
 	                                   {id: 'ios', prefix: 'ios', libs: [''/*prefix is library*/, '7icons', '7ui']}, 
 	                                   {id: 'android', prefix: 'android', libs: [''/*prefix is library*/]}, {id: 'aws3d'},
@@ -117,7 +118,7 @@
 	                                   {id: 'sitemap'}, {id:'c4'}, {id: 'dfd'}, {id: 'threatModeling'}, {id : 'kubernetes'}, {id : 'cisco19', prefix: 'cisco19', libs: Sidebar.prototype.cisco19},
 	                                   {id: 'mscae', prefix: 'mscae', libs: ['Companies', 'EnterpriseFlat', 'IntuneFlat', 'OMSFlat', 'System CenterFlat', 'AI and ML Service', 'Analytics Service', 'Compute Service', 'Compute Service VM', 'Container Service', 'Databases Service', 'DevOps Service', 'General Service', 'Identity Service', 'Integration Service', 'Internet of Things Service', 'Intune Service', 'Management and Governance Service', 'Management and Governance Service Media', 'Migrate Service', 'Mixed Reality Service', 'Mobile Service', 'Networking Service', 'Other Category Service', 'Security Service', 'Storage Service', 'Web Service']},
 	                                   {id: 'active_directory'},
-	                                   {id: 'bpmn', prefix: 'bpmn', libs: [''/*prefix is library*/, 'Gateways', 'Events']},
+	                                   {id: 'bpmn2', prefix: 'bpmn2', libs: ['General', 'Tasks', 'Choreographies', 'Events', 'Gateways']},
 	                                   {id: 'clipart', prefix: null, libs: ['computer', 'finance', 'clipart', 'networking', 'people', 'telco']},
 	                                   {id: 'ibm', prefix: 'ibm', libs: Sidebar.prototype.ibm},
 	                                   {id: 'allied_telesis', prefix: 'allied_telesis', libs: Sidebar.prototype.allied_telesis},
@@ -470,6 +471,7 @@
             			          {title: mxResources.get('ios'), id: 'ios', image: IMAGE_PATH + '/sidebar-ios.png'},
             			          {title: mxResources.get('mockups'), id: 'mockups', image: IMAGE_PATH + '/sidebar-mockups.png'},
             			          {title: 'Sitemap', id: 'sitemap', image: IMAGE_PATH + '/sidebar-sitemap.png'},
+            			          {title: mxResources.get('uml') + ' 2.5', id: 'uml25', image: IMAGE_PATH + '/sidebar-uml25.png'},
             			          {title: mxResources.get('uml'), id: 'uml', image: IMAGE_PATH + '/sidebar-uml.png'}]},
             			{title: mxResources.get('networking'),
             			entries: [{title: 'Allied Telesis', id: 'allied_telesis', image: IMAGE_PATH + '/sidebar-allied_telesis.png'},
@@ -496,7 +498,7 @@
             			{title: mxResources.get('business'),
             			entries: [{title: 'ArchiMate 3.0', id: 'archimate3', image: IMAGE_PATH + '/sidebar-archimate3.png'},
             			          {title: mxResources.get('archiMate21'), id: 'archimate', image: IMAGE_PATH + '/sidebar-archimate.png'},
-            			          {title: mxResources.get('bpmn'), id: 'bpmn', image: IMAGE_PATH + '/sidebar-bpmn.png'},
+            			          {title: mxResources.get('bpmn') + ' 2.0', id: 'bpmn2', image: IMAGE_PATH + '/sidebar-bpmn.png'},
             			          {title: mxResources.get('sysml'), id: 'sysml', image: IMAGE_PATH + '/sidebar-sysml.png'},
             			          {title: 'Value Stream Mapping', id: 'lean_mapping', image: IMAGE_PATH + '/sidebar-leanmapping.png'}]},
             			{title: mxResources.get('other'),
@@ -1031,7 +1033,7 @@
 		}
 		
 		this.addGeneralPalette(this.customEntries == null);
-		this.addMiscPalette(false);
+		this.addMiscPalette(false);	
 		this.addAdvancedPalette(false);
 		this.addBasicPalette();
 		this.addStencilPalette('arrows', mxResources.get('arrows'), dir + '/arrows.xml',
@@ -1152,6 +1154,7 @@
 		this.addKubernetesPalette();
 		this.addMockupPalette();
 		this.addSitemapPalette();
+		this.addUml25Palette();
 		this.addUmlPalette(false);
 		this.addAlliedTelesisPalette();
 		this.addAWS3Palette();
@@ -1177,7 +1180,7 @@
 		this.addVVDPalette();
 		this.addArchimate3Palette();
 		this.addArchiMatePalette();
-		this.addBpmnPalette(dir, false);
+		this.addBpmn2Palette();
 		this.addSysMLPalette(sysml, dir);
 		this.addLeanMappingPalette();
 		this.addCabinetsPalette();
@@ -1289,12 +1292,6 @@
 			this.searchFileData = null;
 		}
 		
-		// Logs search terms for improving search results
-		if (!this.editorUi.isOffline() && page == 0)
-		{
-			EditorUi.logEvent({category: 'Shape', action: 'search', label: searchTerms});
-		}
-		
 		if (ICONSEARCH_PATH != null)
 		{
 			success = mxUtils.bind(this, function(results, len, more, terms)
@@ -1401,6 +1398,15 @@
 					
 					graph.addCell(target);
 					graph.getModel().setTerminal(graph.getSelectionCell(), target, false);
+					
+					if (evt == null || !mxEvent.isShiftDown(evt))
+					{
+						graph.fireEvent(new mxEventObject('cellsInserted', 'cells', [target]));
+					}
+				}
+				catch (e)
+				{
+					this.editorUi.handleError(e);
 				}
 				finally
 				{
