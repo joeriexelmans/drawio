@@ -21,15 +21,15 @@
       ui.editor.graph.view.revalidate();
     }
 
-    sourceCell = edge.source;
-    targetCell = edge.getTerminal();
+    const sourceCell = edge.source;
+    const targetCell = edge.getTerminal();
 
     if (!sourceCell || !targetCell) {
       return;
     }
 
-    sourceType = sourceCell.getAttribute("pmRole");
-    targetType = targetCell.getAttribute("pmRole");
+    const sourceType = sourceCell.getAttribute("pmRole");
+    const targetType = targetCell.getAttribute("pmRole");
 
     function isActivity(type) {
       return type === "man_activity" || type === "autom_activity" || type === "super_activity";
