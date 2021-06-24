@@ -27,21 +27,15 @@ Draw.loadPlugin(function(ui) {
       const value = map2[key];
       if (value !== undefined) {
         map1.set(key, value);
-      } else {
-        console.log(key, value);
       }
     }
   }
 
   // Styles for our different edge types
   const styles = {
-    // control_flow: parseStyle("edgeStyle=0;endArrow=classic;html=1;strokeWidth=2;"),
     control_flow: parseStyle("edgeStyle=0;endArrow=classic;html=1;strokeWidth=2;fontSize=10;strokeColor=#004C99;"),
-    // data_flow: parseStyle("edgeStyle=0;endArrow=classic;html=1;strokeWidth=1;fontSize=14;fontColor=#000000;dashed=1;"),
     data_flow: parseStyle("edgeStyle=0;endArrow=classic;html=1;strokeWidth=1;fontSize=14;fontColor=#000000;fillColor=#d5e8d4;strokeColor=#6D9656;dashed=1;"),
-    // detail: parseStyle("edgeStyle=0;endArrow=classic;html=1;dashed=1;strokeWidth=2;curved=1;fontColor=#000000;endFill=0;endSize=10;startSize=8;"),
     typed_by: parseStyle("edgeStyle=0;endArrow=blockThin;html=1;strokeWidth=1;fontSize=14;fontColor=#000000;dashed=1;dashPattern=1 1;strokeColor=#666666;endFill=1;endSize=6;"),
-    // produce_consume: parseStyle("edgeStyle=0;endArrow=classic;html=1;"),
   };
 
   function checkEdge(ui, edge, fromTo) {
